@@ -2,15 +2,15 @@
 
 [![License](https://img.shields.io/badge/license-MIT-informational.svg)](https://opensource.org/licenses/MIT)
 
-This is a small tool that can generate automatically the code necessary to create a proxy DLL.
-This is useful to generate a starting point or if you just want to hook the original DLL.
+This is a small tool that can automatically generate the code necessary to create a proxy DLL.
+This is useful to make a starting point or if you just want to hook the original DLL.
 I took inspiration to make this tool from Michael Chourdakis' [article], but his implementation was not suited for my needs, so after some research and testing I created this tool.
 
 ## Requirements
 
 To use this tool you will need to:
 
-+ have **Visual Studio 2019* development environment
++ have **Visual Studio 2019** development environment
 + have [nasm] >= **2.15** installed and on your PATH
 
 ## Usage
@@ -29,13 +29,15 @@ To generate an exports file, open **Native Tools Command Prompt**, go to the ori
 dumpbin /exports some.dll > exports.txt
 ```
 
+Where `some.dll` is the one you want to scan the exported functions.
+
 ## Binaries
 
 You can find pre-compiled binaries in the [releases] page.
 
 ## Building the command line interface
 
-There's only one file to be compiled, just open **Native Tools Command Prompt** (the binary architecture will depend on the terminal environment) and then run the command below:
+If you don't want to use the pre-compiled binaries or if they didn't work for you, there's only one file to be compiled, just open **Native Tools Command Prompt** (the binary architecture will depend on the terminal environment) and then run the command below:
 
 ```sh
 cl /EHsc wrappem.cpp
@@ -56,7 +58,14 @@ link /nologo /dll asm.obj cpp.obj /def:dllmain.def /out:main.dll
 
 **NOTES:**
 If you are using `Win32` change the option `-f win64` accordingly.
-Also, change  the option `/out:` with the name of the proxy **DLL**.
+Also, change  the option `/out:` with the name of the proxy DLL.
+
+---
+
+# Contributions
+
+Feel free to leave your contribution here, I would really appreciate it!
+Also, if you have any doubts or troubles using this tool just contact me or leave an issue.
 
 
 [releases]: https://github.com/oAGoulart/wrappem/releases
