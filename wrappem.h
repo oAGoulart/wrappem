@@ -32,7 +32,7 @@
 #include <cctype>
 
 #define PROJECT_NAME "WrappEm"
-#define PROJECT_VERSION "v0.1.2"
+#define PROJECT_VERSION "v0.1.4"
 
 #define _STR(a) #a
 
