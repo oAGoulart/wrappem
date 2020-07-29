@@ -63,7 +63,7 @@ inline string RemoveFileExt(char* filename)
   return noext;
 }
 
-inline void MkdirRecursive(char* path)
+inline void Mkdir(char* path)
 {
   string workdir = "";
   char* context = nullptr;
@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
     cout << "\t\t" << _C(42, " SUCCESS ") << "\tParsed " << exports->size() << " exported functions\n";
 
     ofstream ofile;
-    MkdirRecursive(argv[4]);
+    Mkdir(argv[4]);
 
     cout << "\t\t" << _C(44, " TASK ") << "\tGenerating C++ file dllmain.cpp...\n";
     ofile.open(string(argv[4]).append("/dllmain.cpp"));
