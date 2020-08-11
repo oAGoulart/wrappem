@@ -1,4 +1,4 @@
-[![WrappEm](https://live.staticflickr.com/65535/50160792103_f5ee23cefd_h.jpg)]()
+[![WrappEm](https://live.staticflickr.com/65535/50212827266_ecedc91f80_h.jpg)]()
 
 ![Platform](https://img.shields.io/badge/platform-win--32%20%7C%20win--64-lightgrey)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/oAGoulart/wrappem?color=green)
