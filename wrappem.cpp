@@ -23,8 +23,8 @@
 
 Export::Export(const DWORD ordinal, const DWORD hint, const DWORD rva, const char* name, const DWORD index)
 {
-  ordinal_ = ordinal;
   hint_ = hint;
+  ordinal_ = ordinal;
   rva_ = rva;
 
   only_ordinal_ = FALSE;
@@ -44,10 +44,30 @@ Export::~Export()
   delete name_;
 }
 
+inline string CstrToUpper(const string str)
+{
+  string buff = "";
+  for (auto rit = str.cbegin(); rit != str.cend(); ++rit)
+    buff += ('a' <= *rit && *rit <= 'z') ? (*rit)^0x20 : *rit;
+  return buff;
+}
+
 inline DWORD GetDword(WORD high, WORD low)
 {
   DWORD r = (high << 16) | low;
   return r;
+}
+
+inline void Mkdir(char* path)
+{
+  string workdir = "";
+  char* context = nullptr;
+  char* folder = strtok_s(path, "/\\", &context);
+  while (nullptr != folder) {
+    workdir += folder;
+    _mkdir(workdir.data());
+    folder = strtok_s(nullptr, "/\\", &context);
+  }
 }
 
 inline string RemoveFileExt(char* filename)
@@ -63,26 +83,6 @@ inline string RemoveFileExt(char* filename)
   return noext;
 }
 
-inline void Mkdir(char* path)
-{
-  string workdir = "";
-  char* context = nullptr;
-  char* folder = strtok_s(path, "/\\", &context);
-  while (nullptr != folder) {
-    workdir += folder;
-    _mkdir(workdir.data());
-    folder = strtok_s(nullptr, "/\\", &context);
-  }
-}
-
-inline string CstrToUpper(const string str)
-{
-  string buff = "";
-  for (auto rit = str.cbegin(); rit != str.cend(); ++rit)
-    buff += ('a' <= *rit && *rit <= 'z') ? (*rit)^0x20 : *rit;
-  return buff;
-}
-
 int main(int argc, char* argv[])
 {
   try {
@@ -91,13 +91,14 @@ int main(int argc, char* argv[])
          << "\tWrappEm: Verifying arguments...\n\n";
 
     if (argc >= 2) {
-      if (strcmp(argv[1], "--help") == 0) {
-        cout << "Usage: wrappem [--help] " _C(95, "<dll> <exports> <original> <out>") << "\n\n"
-             << "\t--help\t\tshow this help message\n"
+      if (!strcmp(argv[1], "--help")) {
+        cout << "Usage: wrappem [--help] " _C(95, "<dll> <exports> <original> <out>") << " [/nocpp]\n\n"
+             << "\t--help\t\t\tshow this help message\n"
              << '\t' << _C(95, "dll") << "\t\tis the name of your proxy DLL (i.e. version.dll)\n"
              << '\t' << _C(95, "exports") << "\t\tis a text file containing the exports from the original DLL\n"
              << '\t' << _C(95, "original") << "\tis the DLL name that your proxy DLL will try to load\n"
-             << '\t' << _C(95, "out") << "\t\toutput directory\n";
+             << '\t' << _C(95, "out") << "\t\toutput directory\n"
+             << "\t/nocpp\t\t\tdo not generate C++ file\n";
         exit(EXIT_SUCCESS);
       } else if (argc < 4) {
         throw invalid_argument("Not enough arguments");
@@ -149,6 +150,45 @@ int main(int argc, char* argv[])
     ofstream ofile;
     Mkdir(argv[4]);
 
+    cout << "\t\t" << _C(44, " TASK ") << "\tGenerating Assembly file dllmain.asm...\n";
+    ofile.open(string(argv[4]).append("/dllmain.asm"));
+
+#ifdef __X86_ARCH__
+    ofile << "extern _address\n\n"
+#else
+    ofile << "extern address\n\n"
+#endif
+          << "section .text\n";
+    for (size_t i = 0; i < exports->size(); ++i)
+      ofile << "\tglobal " << *(*exports)[i]->name_ << "_\n";
+    for (size_t i = 0; i < exports->size(); ++i)
+      ofile << '\n' << *(*exports)[i]->name_ << "_:\n"
+#ifdef __X86_ARCH__
+            << "\tjmp [_address + " << (*exports)[i]->index_ * sizeof(FARPROC) << "]\n";
+#else
+            << "\tmov rax, address\n"
+            << "\tjmp [rax + " << (*exports)[i]->index_ * sizeof(FARPROC) << "]\n";
+#endif
+
+    ofile.close();
+    cout << "\t\t" << _C(42, " SUCCESS ") << "\tWritten " << exports->size() << " proxy functions to Assembly file\n";
+
+    cout << "\t\t" << _C(44, " TASK ") << "\tGenerating DEF file...\n";
+    ofile.open(string(argv[4]).append("/dllmain.def"));
+
+    ofile << "LIBRARY " << CstrToUpper(RemoveFileExt(argv[1])) << '\n'
+          << "EXPORTS\n";
+    for (size_t i = 0; i < exports->size(); ++i)
+      ofile << '\t' << *(*exports)[i]->name_ << '=' << *(*exports)[i]->name_ << "_ @" << (*exports)[i]->ordinal_ << '\n';
+
+    ofile.close();
+    cout << "\t\t" << _C(42, " SUCCESS ") << "\tWritten " << exports->size() << " proxy functions to DEF file\n";
+
+    if (argc >= 5) {
+      if (!strcmp(argv[5], "/nocpp"))
+        exit(EXIT_SUCCESS);
+    }
+
     cout << "\t\t" << _C(44, " TASK ") << "\tGenerating C++ file dllmain.cpp...\n";
     ofile.open(string(argv[4]).append("/dllmain.cpp"));
 
@@ -186,43 +226,9 @@ int main(int argc, char* argv[])
 
     ofile.close();
     cout << "\t\t" << _C(42, " SUCCESS ") << "\tWritten " << exports->size() << " proxy functions to C++ file\n";
-
-    cout << "\t\t" << _C(44, " TASK ") << "\tGenerating Assembly file dllmain.asm...\n";
-    ofile.open(string(argv[4]).append("/dllmain.asm"));
-
-#ifdef __X86_ARCH__
-    ofile << "extern _address\n\n"
-#else
-    ofile << "extern address\n\n"
-#endif
-          << "section .text\n";
-    for (size_t i = 0; i < exports->size(); ++i)
-      ofile << "\tglobal " << *(*exports)[i]->name_ << "_\n";
-    for (size_t i = 0; i < exports->size(); ++i)
-      ofile << '\n' << *(*exports)[i]->name_ << "_:\n"
-#ifdef __X86_ARCH__
-            << "\tjmp [_address + " << (*exports)[i]->index_ * sizeof(FARPROC) << "]\n";
-#else
-            << "\tmov rax, address\n"
-            << "\tjmp [rax + " << (*exports)[i]->index_ * sizeof(FARPROC) << "]\n";
-#endif
-
-    ofile.close();
-    cout << "\t\t" << _C(42, " SUCCESS ") << "\tWritten " << exports->size() << " proxy functions to Assembly file\n";
-
-    cout << "\t\t" << _C(44, " TASK ") << "\tGenerating DEF file...\n";
-    ofile.open(string(argv[4]).append("/dllmain.def"));
-
-    ofile << "LIBRARY " << CstrToUpper(RemoveFileExt(argv[1])) << '\n'
-          << "EXPORTS\n";
-    for (size_t i = 0; i < exports->size(); ++i)
-      ofile << '\t' << *(*exports)[i]->name_ << '=' << *(*exports)[i]->name_ << "_ @" << (*exports)[i]->ordinal_ << '\n';
-
-    ofile.close();
-    cout << "\t\t" << _C(42, " SUCCESS ") << "\tWritten " << exports->size() << " proxy functions to DEF file\n";
   } catch (const exception& e) {
     cerr << "\t\t" << _C(41, " FAIL ") << '\t' << e.what() << "\n\n";
-    throw;
+    exit(EXIT_FAILURE);
   }
   exit(EXIT_SUCCESS);
 }
