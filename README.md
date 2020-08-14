@@ -20,7 +20,7 @@ To use this tool you will need to:
 Given an DLL exports file, this tool will generate a C++ source file, an Assembly file and a DEF file to link the code together.
 
 ```sh
-wrappem [--help] <dll> <exports> <original> <out>
+wrappem [--help] <dll> <exports> <original> <out> [/nocpp]
 ```
 
 ### Generate exports file
