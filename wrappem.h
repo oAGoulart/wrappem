@@ -32,14 +32,14 @@
 #include <cctype>
 
 #define PROJECT_NAME "WrappEm"
-#define PROJECT_VERSION "v0.1.4"
-
-#define _STR(a) #a
+#define PROJECT_VERSION "v0.1.5"
 
 #if defined(__ILP32__) || defined(_ILP32) || defined(__i386__) || defined(_M_IX86) || defined(_X86_)
   #undef __X86_ARCH__
   #define __X86_ARCH__ 1
 #endif
+
+#define _STR(a) #a
 
 #if !defined(NOCOLOR)
   #define _C(c, str) "\033[" _STR(c) "m" str "\033[m"
@@ -50,15 +50,20 @@
 using namespace std;
 
 class Export
-{ 
+{
 public:
-  DWORD ordinal_;
   DWORD hint_;
-  DWORD rva_;
-  string* name_;
   DWORD index_;
+  string* name_;
+  DWORD ordinal_;
   BOOL only_ordinal_;
+  DWORD rva_;
 
   Export(const DWORD ordinal, const DWORD hint, const DWORD rva, const char* name, const DWORD index);
   ~Export();
 };
+
+inline string CstrToUpper(const string str);
+inline DWORD GetDword(WORD high, WORD low);
+inline void Mkdir(char* path);
+inline string RemoveFileExt(char* filename);
