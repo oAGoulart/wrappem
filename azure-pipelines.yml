@@ -1,0 +1,27 @@
+trigger:
+- master
+
+jobs:
+- job: Windows_x64
+  pool:
+    vmImage: 'windows-latest'
+
+  steps:
+  - checkout: self
+    clean: true
+    submodules: true
+  - task: CmdLine@2
+    inputs:
+      script: 'cl /EHsc wrappem.cpp'
+
+- job: Windows_x86
+  pool:
+    vmImage: 'windows-2019'
+
+  steps:
+  - checkout: self
+    clean: true
+    submodules: true
+  - task: CmdLine@2
+    inputs:
+      script: 'cl -target i386-pc-win32 /EHsc wrappem.cpp'
