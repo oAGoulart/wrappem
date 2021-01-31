@@ -10,9 +10,15 @@ jobs:
   - checkout: self
     clean: true
     submodules: true
-  - task: CmdLine@2
+  - task: CMake@1
     inputs:
-      script: 'cl /EHsc wrappem.cpp'
+      cmakeArgs: '-A x64 $(Build.SourcesDirectory)'
+
+  - task: MSBuild@1
+    inputs:
+      solution: '$(Build.SourcesDirectory)/build/*.sln'
+      maximumCpuCount: true
+      platform: 'x64'
 
 - job: Windows_x86
   pool:
@@ -22,6 +28,12 @@ jobs:
   - checkout: self
     clean: true
     submodules: true
-  - task: CmdLine@2
+  - task: CMake@1
     inputs:
-      script: 'cl -target i386-pc-win32 /EHsc wrappem.cpp'
+      cmakeArgs: '-A Win32 $(Build.SourcesDirectory)'
+
+  - task: MSBuild@1
+    inputs:
+      solution: '$(Build.SourcesDirectory)/build/*.sln'
+      maximumCpuCount: true
+      platform: 'Win32'
