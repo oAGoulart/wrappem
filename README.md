@@ -1,5 +1,6 @@
 [![WrappEm](https://live.staticflickr.com/65535/50212827266_ecedc91f80_h.jpg)]()
 
+[![Build Status](https://dev.azure.com/agoulart/wrappem/_apis/build/status/oAGoulart.wrappem?branchName=refs%2Fpull%2F3%2Fmerge)](https://dev.azure.com/agoulart/wrappem/_build/latest?definitionId=6&branchName=refs%2Fpull%2F3%2Fmerge)
 ![Platform](https://img.shields.io/badge/platform-win--32%20%7C%20win--64-lightgrey)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/oAGoulart/wrappem?color=green)
 [![License](https://img.shields.io/badge/license-MIT-informational.svg)](https://opensource.org/licenses/MIT)
