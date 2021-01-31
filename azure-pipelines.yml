@@ -1,0 +1,39 @@
+trigger:
+- master
+
+jobs:
+- job: Windows_x64
+  pool:
+    vmImage: 'windows-latest'
+
+  steps:
+  - checkout: self
+    clean: true
+    submodules: true
+  - task: CMake@1
+    inputs:
+      cmakeArgs: '-A x64 $(Build.SourcesDirectory)'
+
+  - task: MSBuild@1
+    inputs:
+      solution: '$(Build.SourcesDirectory)/build/*.sln'
+      maximumCpuCount: true
+      platform: 'x64'
+
+- job: Windows_x86
+  pool:
+    vmImage: 'windows-2019'
+
+  steps:
+  - checkout: self
+    clean: true
+    submodules: true
+  - task: CMake@1
+    inputs:
+      cmakeArgs: '-A Win32 $(Build.SourcesDirectory)'
+
+  - task: MSBuild@1
+    inputs:
+      solution: '$(Build.SourcesDirectory)/build/*.sln'
+      maximumCpuCount: true
+      platform: 'Win32'
