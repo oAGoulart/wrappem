@@ -1,6 +1,9 @@
 trigger:
 - master
 
+pr:
+- master
+
 jobs:
 - job: Windows_x64
   pool:
