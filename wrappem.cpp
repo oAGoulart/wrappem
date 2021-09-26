@@ -158,7 +158,10 @@ int main(int argc, char* argv[])
     cout << "\t\t" << _C(44, " TASK ") << "\tGenerating Assembly file dllmain.asm...\n";
     ofile.open(string(argv[4]).append("/dllmain.asm"));
 
-    ofile << (x86arch) ? "extern _address\n\n" : "extern address\n\n";
+    if (x86arch)
+      ofile << "extern _address\n\n";
+    else
+      ofile << "extern address\n\n";
     ofile << "section .text\n";
 
     for (size_t i = 0; i < exports->size(); ++i)
