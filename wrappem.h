@@ -32,12 +32,7 @@
 #include <cctype>
 
 #define PROJECT_NAME "WrappEm"
-#define PROJECT_VERSION "v0.1.5"
-
-#if defined(__ILP32__) || defined(_ILP32) || defined(__i386__) || defined(_M_IX86) || defined(_X86_)
-  #undef __X86_ARCH__
-  #define __X86_ARCH__ 1
-#endif
+#define PROJECT_VERSION "v0.1.6"
 
 #define _STR(a) #a
 
