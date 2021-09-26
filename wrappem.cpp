@@ -86,6 +86,8 @@ inline string RemoveFileExt(char* filename)
 int main(int argc, char* argv[])
 {
   try {
+    bool x86arch = true;
+
     cout << "\n\t\t" << _C(36, PROJECT_NAME) << ' ' << _C(36, PROJECT_VERSION) << '\n'
          << "\tCopyright (C) 2020 Augusto Goulart\n\n"
          << "\tWrappEm: Verifying arguments...\n\n";
@@ -98,7 +100,7 @@ int main(int argc, char* argv[])
              << '\t' << _C(95, "exports") << "\t\tis a text file containing the exports from the original DLL\n"
              << '\t' << _C(95, "original") << "\tis the DLL name that your proxy DLL will try to load\n"
              << '\t' << _C(95, "out") << "\t\toutput directory\n"
-             << "\t/nocpp\t\t\tdo not generate C++ file\n";
+             << "\t/64\t\t\tgenerate files for 64-bits (default is 32-bits)\n";
         exit(EXIT_SUCCESS);
       } else if (argc < 4) {
         throw invalid_argument("Not enough arguments");
@@ -106,6 +108,9 @@ int main(int argc, char* argv[])
     } else {
       throw invalid_argument("Zero arguments provided");
     }
+
+    if (argc > 5)
+      x86arch = (strcmp(argv[5], "/64") != 0);
 
     unique_ptr<vector<Export*>> exports(new vector<Export*>);
     ifstream ifile;
@@ -153,22 +158,18 @@ int main(int argc, char* argv[])
     cout << "\t\t" << _C(44, " TASK ") << "\tGenerating Assembly file dllmain.asm...\n";
     ofile.open(string(argv[4]).append("/dllmain.asm"));
 
-#ifdef __X86_ARCH__
-    ofile << "extern _address\n\n"
-#else
-    ofile << "extern address\n\n"
-#endif
-          << "section .text\n";
+    ofile << (x86arch) ? "extern _address\n\n" : "extern address\n\n";
+    ofile << "section .text\n";
+
     for (size_t i = 0; i < exports->size(); ++i)
       ofile << "\tglobal " << *(*exports)[i]->name_ << "_\n";
-    for (size_t i = 0; i < exports->size(); ++i)
-      ofile << '\n' << *(*exports)[i]->name_ << "_:\n"
-#ifdef __X86_ARCH__
-            << "\tjmp [_address + " << (*exports)[i]->index_ * sizeof(FARPROC) << "]\n";
-#else
-            << "\tmov rax, address\n"
-            << "\tjmp [rax + " << (*exports)[i]->index_ * sizeof(FARPROC) << "]\n";
-#endif
+    for (size_t i = 0; i < exports->size(); ++i) {
+      ofile << '\n' << *(*exports)[i]->name_ << "_:\n";
+      if (x86arch)
+        ofile << "\tjmp [_address + " << (*exports)[i]->index_ * sizeof(FARPROC) << "]\n";
+      else
+        ofile << "\tmov rax, address\n" << "\tjmp [rax + " << (*exports)[i]->index_ * sizeof(FARPROC) << "]\n";
+    }
 
     ofile.close();
     cout << "\t\t" << _C(42, " SUCCESS ") << "\tWritten " << exports->size() << " proxy functions to Assembly file\n";
@@ -183,11 +184,6 @@ int main(int argc, char* argv[])
 
     ofile.close();
     cout << "\t\t" << _C(42, " SUCCESS ") << "\tWritten " << exports->size() << " proxy functions to DEF file\n";
-
-    if (argc >= 5) {
-      if (!strcmp(argv[5], "/nocpp"))
-        exit(EXIT_SUCCESS);
-    }
 
     cout << "\t\t" << _C(44, " TASK ") << "\tGenerating C++ file dllmain.cpp...\n";
     ofile.open(string(argv[4]).append("/dllmain.cpp"));

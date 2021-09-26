@@ -21,7 +21,7 @@ To use this tool you will need to:
 Given an DLL exports file, this tool will generate a C++ source file, an Assembly file and a DEF file to link the code together.
 
 ```sh
-wrappem [--help] <dll> <exports> <original> <out> [/nocpp]
+wrappem [--help] <dll> <exports> <original> <out> [/64]
 ```
 
 ### Generate exports file
@@ -40,7 +40,7 @@ You can find pre-compiled binaries in the [releases] page.
 
 ## Building the command line interface
 
-If you don't want to use the pre-compiled binaries or if they didn't work for you, there's only one file to be compiled, just open **Native Tools Command Prompt** (the binary architecture will depend on the terminal environment) and then run the command below:
+If you don't want to use the pre-compiled binaries or if they didn't work for you, there's only one file to be compiled, just open **Native Tools Command Prompt** and then run the command below:
 
 ```sh
 cl /EHsc wrappem.cpp
