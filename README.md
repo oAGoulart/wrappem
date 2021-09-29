@@ -8,7 +8,10 @@
 This is a small tool that can generate a hooked PE file which will import your custom DLL into its process.
 With this you can inject a payload into a process using a DLL.
 
-I took inspiration to make this tool from Michael Chourdakis' [article], but his implementation was not suited for my needs, so after some research and testing I created this tool. The first implementation I made used the same method described in the article to create a proxy DLL, this version however modifies a DLL/Exe imports table to force Windows to importing your payload DLL into the process.
+I took inspiration to make this tool from Michael Chourdakis' [article], but his implementation was not suited for my needs, so after some research and testing I created this tool.
+
+The first implementation I made used the same method described in the article to create a proxy DLL, this version however modifies a DLL/Exe imports table to force Windows to import your payload DLL into the process.
+
 If you're interested in this method you can learn more about [PE Format](https://docs.microsoft.com/en-us/windows/win32/debug/pe-format) and the [Import Address Table](http://sandsprite.com/CodeStuff/Understanding_imports.html) (it's a lot of stuff tho, so get some coffee first).
 
 ## Usage
