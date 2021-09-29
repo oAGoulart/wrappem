@@ -31,4 +31,4 @@ jobs:
     inputs:
       solution: '*.sln'
       maximumCpuCount: true
-      platform: 'Win32'
+      platform: 'x86'
