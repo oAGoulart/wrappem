@@ -13,13 +13,9 @@ jobs:
   - checkout: self
     clean: true
     submodules: true
-  - task: CMake@1
-    inputs:
-      cmakeArgs: '-A x64 $(Build.SourcesDirectory)'
-
   - task: MSBuild@1
     inputs:
-      solution: '$(Build.SourcesDirectory)/build/*.sln'
+      solution: '*.sln'
       maximumCpuCount: true
       platform: 'x64'
 
@@ -31,12 +27,8 @@ jobs:
   - checkout: self
     clean: true
     submodules: true
-  - task: CMake@1
-    inputs:
-      cmakeArgs: '-A Win32 $(Build.SourcesDirectory)'
-
   - task: MSBuild@1
     inputs:
-      solution: '$(Build.SourcesDirectory)/build/*.sln'
+      solution: '*.sln'
       maximumCpuCount: true
       platform: 'Win32'
