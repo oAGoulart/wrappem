@@ -29,7 +29,7 @@
 #include <cstdint>
 
 #define PROJECT_NAME "WrappEm"
-#define PROJECT_VERSION "v0.2.0"
+#define PROJECT_VERSION "v0.2.1"
 
 #define _STR(a) #a
 
@@ -78,4 +78,9 @@ inline uint32_t AlignSize(const uint32_t length, const uint32_t align)
   while (n < length)
     n += align;
   return n;
+}
+
+inline ptrdiff_t FindOffset(void* first, void* second)
+{
+  return reinterpret_cast<char*>(second) - reinterpret_cast<char*>(first);
 }

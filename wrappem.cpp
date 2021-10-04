@@ -57,7 +57,7 @@ static void PatchImportTable(const char* target, const string payloadDll,
   if (!MapAndLoad(target, NULL, &image, TRUE, FALSE))
     throw runtime_error("Could not map PE file");
 
-  bool is64 = false; // NOTE: unused for the moment
+  bool is64 = false;
   if ((image.FileHeader->FileHeader.Machine == IMAGE_FILE_MACHINE_AMD64) &&
       (image.FileHeader->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC))
     is64 = true;
@@ -93,25 +93,25 @@ static void PatchImportTable(const char* target, const string payloadDll,
 
   // move original Directory Table to last section
   const uint32_t newDataPos = newDataIndex;
+  auto dataDir = image.FileHeader->OptionalHeader.DataDirectory[1];
   bool foundSection = false;
   for (size_t i = 0; i < image.NumberOfSections; ++i) {
-    if (!memcmp(image.Sections[i].Name, ".idata", IMAGE_SIZEOF_SHORT_NAME)) {
+    if ((image.Sections[i].VirtualAddress < dataDir.VirtualAddress) &&
+        (image.Sections[i].VirtualAddress +
+         image.Sections[i].SizeOfRawData > dataDir.VirtualAddress)) {
       cout << "\t\t+ Parse data directory table content\n";
       flush(cout);
 
-      uint32_t length = image.FileHeader->OptionalHeader.DataDirectory[1].Size;
-      uint32_t offset = Align(
-        image.FileHeader->OptionalHeader.DataDirectory[1].VirtualAddress,
-        &image.Sections[i]);
-      memcpy(&newData[newDataPos], &data[offset], length);
-      memset(&data[offset], '\0', length);
-      newDataIndex += length;
+      uint32_t offset = Align(dataDir.VirtualAddress, &image.Sections[i]);
+      memcpy(&newData[newDataPos], &data[offset], dataDir.Size);
+      memset(&data[offset], '\0', dataDir.Size);
+      newDataIndex += dataDir.Size;
       foundSection = true;
       break;
     }
   }
   if (!foundSection)
-    throw runtime_error("Unable to find .idata section");
+    throw runtime_error("Unable to find import table");
 
   // add new entry to Directory Table
   cout << "\t- Append generated data\n";
@@ -146,13 +146,22 @@ static void PatchImportTable(const char* target, const string payloadDll,
   cout << "\t- Patch Header values\n";
   flush(cout);
 
-  uint32_t length = newDataPos + lastSection->VirtualAddress +
-                    lastSection->SizeOfRawData;
-  *reinterpret_cast<uint32_t*>(&data[0x170]) = length; // DataDir[1].rva
-  length = image.FileHeader->OptionalHeader.DataDirectory[1].Size;
-  *reinterpret_cast<uint32_t*>(&data[0x174]) = length + 0x14; // DataDir[1].size
+  uint32_t headerOffset = *reinterpret_cast<uint32_t*>(&data[0x3C]);
+  uint32_t sectionOffset = headerOffset + sizeof(IMAGE_NT_HEADERS32);
+  if (is64)
+    sectionOffset = headerOffset + sizeof(IMAGE_NT_HEADERS64);
 
-  offset = 0x1E8 + (IMAGE_SIZEOF_SECTION_HEADER * (image.NumberOfSections - 1));
+  auto importDataOffset = FindOffset(
+    &image.FileHeader->OptionalHeader,
+    &image.FileHeader->OptionalHeader.DataDirectory[1]);
+  uint32_t length = newDataPos + lastSection->VirtualAddress + lastSection->SizeOfRawData;
+  *reinterpret_cast<uint32_t*>(
+    &data[headerOffset + 4 + sizeof(IMAGE_FILE_HEADER) + importDataOffset]) = length;
+  length = dataDir.Size;
+  *reinterpret_cast<uint32_t*>(
+    &data[headerOffset + 4 + sizeof(IMAGE_FILE_HEADER) + importDataOffset + 4]) = length + 0x14;
+
+  offset = sectionOffset + (IMAGE_SIZEOF_SECTION_HEADER * (image.NumberOfSections - 1));
   length = lastSection->Misc.VirtualSize;
   *reinterpret_cast<uint32_t*>(&data[offset + 0x8]) = length + newDataIndex;
   length = lastSection->SizeOfRawData;
@@ -163,7 +172,12 @@ static void PatchImportTable(const char* target, const string payloadDll,
   length = lastSection->VirtualAddress + lastSection->SizeOfRawData + newDataIndex;
   if (length % 0x1000)
     length = ((length / 0x1000) + 1) * 0x1000;
-  *reinterpret_cast<uint32_t*>(&data[0x140]) = length; // SizeOfImage
+
+  auto imageSizeOffset = FindOffset(
+    &image.FileHeader->OptionalHeader,
+    &image.FileHeader->OptionalHeader.SizeOfImage);
+  *reinterpret_cast<uint32_t*>(
+    &data[headerOffset + 4 + sizeof(IMAGE_FILE_HEADER) + imageSizeOffset]) = length;
 
   cout << "\t- Flush output and clean up\n";
   flush(cout);
@@ -175,10 +189,10 @@ static void PatchImportTable(const char* target, const string payloadDll,
     MkDir(&dirPath[0]);
 
   ofstream ofile;
-  ofile.open(outPath, ofile.binary | ofile.out);
+  ofile.open(outPath, ios::binary | ios::out);
   ofile.write(&data[0], dataSize);
   ofile.write(&newData[0], newDataIndex);
   ofile.close();
-
+  
   UnMapAndLoad(&image);
 }
