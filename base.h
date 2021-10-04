@@ -43,7 +43,7 @@ using namespace std;
 
 inline string RemoveFileExt(char* filename, const char token)
 {
-  string result = string(filename);
+  auto result = string(filename);
   for (auto ch = result.crbegin(); ch != result.crend(); ++ch) {
     if (*ch == token) {
       result.pop_back();
@@ -58,7 +58,7 @@ inline void MkDir(char* path)
 {
   string workDir;
   char* context = nullptr;
-  char* folder = strtok_s(path, "/\\", &context);
+  auto folder = strtok_s(path, "/\\", &context);
   while (folder != nullptr) {
     workDir.append(folder);
     _mkdir(workDir.c_str());
