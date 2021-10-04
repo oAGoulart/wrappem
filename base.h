@@ -79,3 +79,8 @@ inline uint32_t AlignSize(const uint32_t length, const uint32_t align)
     n += align;
   return n;
 }
+
+inline ptrdiff_t FindOffset(void* first, void* second)
+{
+  return reinterpret_cast<char*>(second) - reinterpret_cast<char*>(first);
+}
