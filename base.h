@@ -19,14 +19,16 @@
 #pragma once
 
 #define WIN32_LEAN_AND_MEAN
-#include "Windows.h"
-#include "imagehlp.h"
-#include "direct.h"
+#include <Windows.h>
+#include <imagehlp.h>
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <list>
 #include <cstdint>
+#include <filesystem>
+
+#pragma comment(lib, "Imagehlp.lib");
 
 #define PROJECT_NAME "WrappEm"
 #define PROJECT_VERSION "v0.2.1"
@@ -40,31 +42,7 @@
 #endif
 
 using namespace std;
-
-inline string RemoveFileExt(char* filename, const char token)
-{
-  auto result = string(filename);
-  for (auto ch = result.crbegin(); ch != result.crend(); ++ch) {
-    if (*ch == token) {
-      result.pop_back();
-      break;
-    }
-    result.pop_back();
-  }
-  return result;
-}
-
-inline void MkDir(char* path)
-{
-  string workDir;
-  char* context = nullptr;
-  auto folder = strtok_s(path, "/\\", &context);
-  while (folder != nullptr) {
-    workDir.append(folder);
-    _mkdir(workDir.c_str());
-    folder = strtok_s(nullptr, "/\\", &context);
-  }
-}
+using namespace std::filesystem;
 
 inline uint32_t Align(uint32_t value, PIMAGE_SECTION_HEADER section)
 {
