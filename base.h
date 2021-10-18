@@ -31,7 +31,7 @@
 #pragma comment(lib, "Imagehlp.lib");
 
 #define PROJECT_NAME "WrappEm"
-#define PROJECT_VERSION "v0.2.0"
+#define PROJECT_VERSION "v0.2.1"
 
 #define _STR(a) #a
 
