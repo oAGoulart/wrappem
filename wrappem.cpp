@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
     else
       throw invalid_argument("Not enough arguments, use --help");
 
-    PatchImportTable(argv[1], string(argv[2]), string(argv[3]), argv[4]);
+    PatchImportTable(argv[1], argv[2], argv[3], argv[4]);
   }
   catch (const exception& e) {
     cerr << "\t\t" << _C(41, " Error: ") << '\t' << e.what() << "\n\n";
@@ -50,8 +50,8 @@ int main(int argc, char* argv[])
   exit(EXIT_SUCCESS);
 }
 
-static void PatchImportTable(const char* target, const string payloadDll,
-                             const string dummyFunc, char* outPath)
+void PatchImportTable(const char* target, const string payloadDll,
+                      const string dummyFunc, char* outPath)
 {
   LOADED_IMAGE image;
   if (!MapAndLoad(target, NULL, &image, TRUE, FALSE))
@@ -179,11 +179,9 @@ static void PatchImportTable(const char* target, const string payloadDll,
   cout << "\t- Flush output and clean up\n";
   flush(cout);
 
-  auto dirPath = RemoveFileExt(outPath, '\\');
-  if (dirPath.empty())
-    dirPath = RemoveFileExt(outPath, '/');
-  if (!dirPath.empty())
-    MkDir(&dirPath[0]);
+  path outDir = outPath;
+  if (!create_directories(outDir.remove_filename()))
+    throw runtime_error("Unable to create output file");
 
   ofstream ofile;
   ofile.open(outPath, ofile.binary | ofile.out);

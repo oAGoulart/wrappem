@@ -20,5 +20,5 @@
 
 #include "base.h"
 
-static void PatchImportTable(const char* target, const string payloadDll,
-                             const string dummyFunc, char* outPath);
+void PatchImportTable(const char* target, const string payloadDll,
+                      const string dummyFunc, char* outPath);
