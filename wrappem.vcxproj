@@ -150,7 +150,6 @@
     <ClCompile Include="wrappem.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="base.h" />
     <ClInclude Include="wrappem.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
