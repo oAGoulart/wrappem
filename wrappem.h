@@ -18,7 +18,40 @@
 */
 #pragma once
 
-#include "base.h"
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#include <imagehlp.h>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <list>
+#include <cstdint>
+#include <filesystem>
+
+#pragma comment(lib, "Imagehlp.lib")
+
+#define PROJECT_NAME "WrappEm"
+#define PROJECT_VERSION "v0.2.2"
+
+#if !defined(NOCOLOR)
+#define _C(c, str) "\033[" #c "m" str "\033[m"
+#else
+#define _C(c, str) str
+#endif
+
+using namespace std;
+using namespace std::filesystem;
+
+inline ptrdiff_t FindDifference(void* first, void* second)
+{
+  return reinterpret_cast<char*>(second) - reinterpret_cast<char*>(first);
+}
+
+inline uint32_t FindOffsetFromFile(uint32_t value, PIMAGE_SECTION_HEADER section)
+{
+  return (value == 0) ? value :
+    value - section->VirtualAddress + section->PointerToRawData;
+}
 
 void PatchImportTable(const char* target, const string payloadDll,
                       const string dummyFunc, char* outPath);

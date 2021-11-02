@@ -12,7 +12,7 @@ I took inspiration to make this tool from Michael Chourdakis' [article], but his
 
 The first implementation I made used the same method described in the article to create a proxy DLL, this version however modifies a DLL/Exe imports table to force Windows to import your payload DLL into the process.
 
-If you're interested in this method you can learn more about [PE Format](https://docs.microsoft.com/en-us/windows/win32/debug/pe-format) and the [Import Address Table](http://sandsprite.com/CodeStuff/Understanding_imports.html) (it's a lot of stuff tho, so get some coffee first).
+If you're interested in this method you can learn more about [PE Format](https://docs.microsoft.com/en-us/windows/win32/debug/pe-format) and the [Import Table](http://sandsprite.com/CodeStuff/Understanding_imports.html) (it's a lot of stuff tho, so get some coffee first). Also, consider checking my brief explanation on how this tool works [here](https://oagoulart.github.io/how-does-wrappem-work).
 
 ## Usage
 
@@ -27,16 +27,15 @@ An example of how that would look like if I wanted to load `myPayload.dll` paylo
 **NOTES:**
   1. The _dummy_ is just a empty function but must be exported by your DLL.
   2. Also, the target file will not be edited, the output is a modified copy of it.
-  3. If you are using a `amd64` binary, it might not work when your target architecture doesn't match yours.
+  3. It might not work when your target architecture doesn't match yours.
 
 ```sh
-wrappem dinput8.dll myPayload.dll dummy out\\dinput8.dll
+wrappem dinput8.dll myPayload.dll dummy out/dinput8.dll
 ```
 
 ## Binaries
 
-You can find pre-compiled (Debug x86) binaries in the [releases] page.
-The x86 binaries can be used for both archtectures.
+You can find pre-compiled binaries in the [releases] page.
 
 ---
 
