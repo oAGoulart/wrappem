@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- PEFile object to wrap all patching actions
+
+### Changed
+
+- Project license to MS-RL
+
+### Removed
+
+- Visual Studio solution and project files
+
 ## [0.2.2] - 2021-11-02
 
 ### Changed

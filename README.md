@@ -1,9 +1,8 @@
 [![WrappEm](https://live.staticflickr.com/65535/50212827266_ecedc91f80_h.jpg)]()
 
-[![MSBuild](https://github.com/oAGoulart/wrappem/actions/workflows/msbuild.yml/badge.svg)](https://github.com/oAGoulart/wrappem/actions/workflows/msbuild.yml)
 ![Platform](https://img.shields.io/badge/platform-win--32%20%7C%20win--64-blue)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/oAGoulart/wrappem?color=green)
-[![License](https://img.shields.io/badge/license-MIT-informational.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/License%2C%20MS-RL%2C%20blue)](./LICENSE)
 
 This is a small tool that can generate a hooked PE file which will import your custom DLL into its process.
 With this you can inject a payload into a process using a DLL.
