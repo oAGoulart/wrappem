@@ -7,6 +7,7 @@
 #include <iostream>
 #include <memory>
 #include "shared.h"
+#include <filesystem>
 
 class PESectionParameters {
 public:
