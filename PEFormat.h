@@ -187,7 +187,6 @@ private:
   } optional_;
   bool is32_;
   uint8_t* fileBytes_;
-  
 
 public:
   PatchPE(std::filesystem::path filename,
@@ -236,16 +235,16 @@ public:
       }
 
       DataDirectory importTable = (is32_) ?
-        optional_.u32.DataDirectory[12] : optional_.u64.DataDirectory[12];
+        optional_.u32.DataDirectory[1] : optional_.u64.DataDirectory[1];
       if (importTable.VirtualAddress == 0 || importTable.Size == 0)
       {
-        throw std::runtime_error("file has no IAT directory.");
+        throw std::runtime_error("file has no import table directory.");
       }
-      std::cout << __c(42, "[+]") << "\tIAT size (bytes): " <<
+      std::cout << __c(42, "[+]") << "\tImport table size (bytes): " <<
                    importTable.Size << std::endl;
       
-      // IMPORTANT: find which section IAT is in
-      uint32_t iatAddress = 0;
+      // IMPORTANT: find which section the import table is in
+      uint32_t importTableAddress = 0;
       SectionParams* sections = reinterpret_cast<SectionParams*>(
         fileBytes_ + dos_.e_lfanew + sizeof(NtHeader) +
         nt_.FileHeader.SizeOfOptionalHeader);
@@ -255,36 +254,54 @@ public:
             sections->VirtualAddress + sections->VirtualSize >=
             importTable.VirtualAddress + importTable.Size)
         {
-          iatAddress = importTable.VirtualAddress - sections->VirtualAddress +
-                       sections->PointerToRawData;
+          importTableAddress = importTable.VirtualAddress -
+                               sections->VirtualAddress +
+                               sections->PointerToRawData;
           break;
         }
         sections++;
       }
-      if (iatAddress != 0)
+      if (importTableAddress != 0)
       {
-        std::cout << __c(42, "[+]") << "\tIAT at section: " <<
+        std::cout << __c(42, "[+]") << "\tImport table at section: " <<
                      sections->Name << std::endl;
-        std::cout << __c(42, "[+]") << "\tIAT address: " <<
-                     iatAddress << std::endl;
+        std::cout << __c(42, "[+]") << "\tImport table address: " <<
+                     importTableAddress << std::endl;
       }
       else
       {
-        throw std::runtime_error("could not find IAT section.");
+        throw std::runtime_error("could not find import table's section.");
       }
 
-      uint32_t alignment = (is32_) ?
-        optional_.u32.FileAlignment : optional_.u64.FileAlignment;
-      std::cout << __c(42, "[+]") << "\tFile alignment: " <<
-                   alignment << std::endl;
-      
-      uintmax_t newImportTableSize = importTable.Size +
-                                     sizeof(ImportDirectory) + 6 +
-                                     payloadDll.length() + dummyFunc.length();
-
-      uint32_t fileOffset = Align(static_cast<uint32_t>(fileSize), alignment);
-      // TODO: copy IAT to EOF
-      // then, patch RVA's
+      // handle two cases:
+      //   1. move within section, if there's space
+      //   2. relocate entire section, otherwise
+      uint32_t newImportTableSize = importTable.Size + sizeof(ImportDirectory);
+      uint32_t appendSize = static_cast<uint32_t>(
+        6 + payloadDll.length() + dummyFunc.length());
+      uint32_t sectionEmptySpace = sections->SizeOfRawData -
+                                   sections->VirtualSize;
+      if (sectionEmptySpace >= newImportTableSize &&
+          importTable.Size >= appendSize)
+      {
+        std::cout << "Shift" << std::endl;
+      }
+      else
+      {
+        std::cout << "Relocate" << std::endl;
+        uint32_t alignment = (is32_) ?
+          optional_.u32.FileAlignment : optional_.u64.FileAlignment;
+        std::cout << __c(42, "[+]") << "\tFile alignment: " <<
+                    alignment << std::endl;
+        
+        uint32_t newSectionSize = sections->VirtualSize + newImportTableSize +
+                                  appendSize; // virtualSize
+        uint32_t totalSectionSize = Align(newSectionSize, alignment); // rawSize
+        // TODO: allocate bytes for section, copy unto it
+        // then, update `sections` sizes as address
+        // tip: create a separed buffer and write it to output
+        //      after `fileBytes_`
+      }
     }
     catch (std::exception e)
     {
