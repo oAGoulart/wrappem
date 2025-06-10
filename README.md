@@ -11,7 +11,7 @@ I took inspiration to make this tool from Michael Chourdakis' [article], but his
 
 The first implementation I made used the same method described in the article to create a proxy DLL, this version however modifies a DLL/Exe imports table to force Windows to import your payload DLL into the process.
 
-If you're interested in this method you can learn more about [PE Format](https://docs.microsoft.com/en-us/windows/win32/debug/pe-format) and the [Import Table](http://sandsprite.com/CodeStuff/Understanding_imports.html) (it's a lot of stuff tho, so get some coffee first). Also, consider checking my brief explanation on how this tool works [here](https://oagoulart.github.io/how-does-wrappem-work).
+If you're interested in this method you can learn more about [PE Format](https://docs.microsoft.com/en-us/windows/win32/debug/pe-format) and the [Import Table](http://sandsprite.com/CodeStuff/Understanding_imports.html) (it's a lot of stuff tho, so get some coffee first). Also, consider checking my brief explanation on how this tool works here: [Injecting payloads in DLLs](https://oagoulart.github.io/rambles/injecting-payloads-in-dlls).
 
 ## Usage
 
