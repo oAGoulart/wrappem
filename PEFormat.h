@@ -82,7 +82,7 @@ struct DataDirectory
 
 struct ImportDirectory
 {
-  uint32_t rvaImportLookupTable; // 4 byte each
+  uint32_t rvaImportLookupTable; // 4 bytes each
   uint32_t TimeDateStamp;
   uint32_t ForwarderChain;
   uint32_t rvaModuleName;
@@ -129,36 +129,36 @@ struct OptionalHeader32
 
 struct OptionalHeader64
 {
-    uint16_t Magic;
-    uint8_t MajorLinkerVersion;
-    uint8_t MinorLinkerVersion;
-    uint32_t SizeOfCode;
-    uint32_t SizeOfInitializedData;
-    uint32_t SizeOfUninitializedData;
-    uint32_t AddressOfEntryPoint;
-    uint32_t BaseOfCode;
-    uint64_t ImageBase;
-    uint32_t SectionAlignment;
-    uint32_t FileAlignment;
-    uint16_t MajorOperatingSystemVersion;
-    uint16_t MinorOperatingSystemVersion;
-    uint16_t MajorImageVersion;
-    uint16_t MinorImageVersion;
-    uint16_t MajorSubsystemVersion;
-    uint16_t MinorSubsystemVersion;
-    uint32_t Win32VersionValue;
-    uint32_t SizeOfImage;
-    uint32_t SizeOfHeaders;
-    uint32_t CheckSum;
-    uint16_t Subsystem;
-    uint16_t DllCharacteristics;
-    uint64_t SizeOfStackReserve;
-    uint64_t SizeOfStackCommit;
-    uint64_t SizeOfHeapReserve;
-    uint64_t SizeOfHeapCommit;
-    uint32_t LoaderFlags;
-    uint32_t NumberOfRvaAndSizes;
-    DataDirectory DataDirectory[IMAGE_NUMBEROF_DIRECTORY_ENTRIES];
+  uint16_t Magic;
+  uint8_t MajorLinkerVersion;
+  uint8_t MinorLinkerVersion;
+  uint32_t SizeOfCode;
+  uint32_t SizeOfInitializedData;
+  uint32_t SizeOfUninitializedData;
+  uint32_t AddressOfEntryPoint;
+  uint32_t BaseOfCode;
+  uint64_t ImageBase;
+  uint32_t SectionAlignment;
+  uint32_t FileAlignment;
+  uint16_t MajorOperatingSystemVersion;
+  uint16_t MinorOperatingSystemVersion;
+  uint16_t MajorImageVersion;
+  uint16_t MinorImageVersion;
+  uint16_t MajorSubsystemVersion;
+  uint16_t MinorSubsystemVersion;
+  uint32_t Win32VersionValue;
+  uint32_t SizeOfImage;
+  uint32_t SizeOfHeaders;
+  uint32_t CheckSum;
+  uint16_t Subsystem;
+  uint16_t DllCharacteristics;
+  uint64_t SizeOfStackReserve;
+  uint64_t SizeOfStackCommit;
+  uint64_t SizeOfHeapReserve;
+  uint64_t SizeOfHeapCommit;
+  uint32_t LoaderFlags;
+  uint32_t NumberOfRvaAndSizes;
+  DataDirectory DataDirectory[IMAGE_NUMBEROF_DIRECTORY_ENTRIES];
 };
 
 struct SectionParams
@@ -178,12 +178,12 @@ struct SectionParams
 class PatchPE
 {
 private:
-  DosHeader dos_;
-  NtHeader nt_;
+  DosHeader* dos_;
+  NtHeader* nt_;
   union Optional
   {
-    OptionalHeader32 u32;
-    OptionalHeader64 u64;
+    OptionalHeader32* u32;
+    OptionalHeader64* u64;
   } optional_;
   bool is32_;
   uint8_t* fileBytes_;
@@ -197,64 +197,65 @@ public:
       std::ifstream file;
       file.open(filename, std::ios::binary);
 
+      std::cout << "   \tParsing file..." << std::endl;
       const uintmax_t fileSize = std::filesystem::file_size(filename);
       fileBytes_ = new uint8_t[fileSize];
       file.read(reinterpret_cast<char*>(fileBytes_), fileSize);
 
-      dos_ = *reinterpret_cast<DosHeader*>(fileBytes_);
-      if (dos_.e_magic[0] != 'M' || dos_.e_magic[1] != 'Z')
+      dos_ = reinterpret_cast<DosHeader*>(fileBytes_);
+      if (dos_->e_magic[0] != 'M' || dos_->e_magic[1] != 'Z')
       {
         throw std::runtime_error("file has invalid DOS header.");
       }
 
-      nt_ = *reinterpret_cast<NtHeader*>(fileBytes_ + dos_.e_lfanew);
-      if (nt_.Signature[0] != 'P' || nt_.Signature[1] != 'E' ||
-          nt_.Signature[2] != '\0' || nt_.Signature[3] != '\0')
+      nt_ = reinterpret_cast<NtHeader*>(fileBytes_ + dos_->e_lfanew);
+      if (nt_->Signature[0] != 'P' || nt_->Signature[1] != 'E' ||
+          nt_->Signature[2] != '\0' || nt_->Signature[3] != '\0')
       {
         throw std::runtime_error("file has invalid NT header.");
       }
 
       std::cout << __c(42, "[+]") << "\tMachine: " <<
-                   MachineType(nt_.FileHeader.Machine) << std::endl;
+                   MachineType(nt_->FileHeader.Machine) << std::endl;
       std::cout << __c(42, "[+]") << "\tNumber of section: " <<
-                   nt_.FileHeader.NumberOfSections << std::endl;
+                   nt_->FileHeader.NumberOfSections << std::endl;
       std::cout << __c(42, "[+]") << "\tSize of optional header: " <<
-                   nt_.FileHeader.SizeOfOptionalHeader << std::endl;
+                   nt_->FileHeader.SizeOfOptionalHeader << std::endl;
       
-      if (nt_.FileHeader.SizeOfOptionalHeader == sizeof(OptionalHeader32))
+      if (nt_->FileHeader.SizeOfOptionalHeader == sizeof(OptionalHeader32))
       {
         is32_ = true;
-        optional_.u32 = *reinterpret_cast<OptionalHeader32*>(
-                        fileBytes_ + dos_.e_lfanew + sizeof(NtHeader));
+        optional_.u32 = reinterpret_cast<OptionalHeader32*>(
+                        fileBytes_ + dos_->e_lfanew + sizeof(NtHeader));
       }
       else
       {
         is32_ = false;
-        optional_.u64 = *reinterpret_cast<OptionalHeader64*>(
-                        fileBytes_ + dos_.e_lfanew + sizeof(NtHeader));
+        optional_.u64 = reinterpret_cast<OptionalHeader64*>(
+                        fileBytes_ + dos_->e_lfanew + sizeof(NtHeader));
       }
 
-      DataDirectory importTable = (is32_) ?
-        optional_.u32.DataDirectory[1] : optional_.u64.DataDirectory[1];
-      if (importTable.VirtualAddress == 0 || importTable.Size == 0)
+      DataDirectory* importTable = (is32_) ?
+        &optional_.u32->DataDirectory[1] : &optional_.u64->DataDirectory[1];
+      if (importTable->VirtualAddress == 0 || importTable->Size == 0)
       {
         throw std::runtime_error("file has no import table directory.");
       }
       std::cout << __c(42, "[+]") << "\tImport table size (bytes): " <<
-                   importTable.Size << std::endl;
+                   importTable->Size << std::endl;
       
       // IMPORTANT: find which section the import table is in
       uint32_t importTableAddress = 0;
       SectionParams* sections = reinterpret_cast<SectionParams*>(
-        fileBytes_ + dos_.e_lfanew + sizeof(NtHeader) +
-        nt_.FileHeader.SizeOfOptionalHeader);
-      for (uint16_t i = 0; i < nt_.FileHeader.NumberOfSections; i++)
+        fileBytes_ + dos_->e_lfanew + sizeof(NtHeader) +
+        nt_->FileHeader.SizeOfOptionalHeader);
+      for (uint16_t i = 0; i < nt_->FileHeader.NumberOfSections; i++)
       {
-        if (sections->VirtualAddress <= importTable.VirtualAddress &&
+        if (sections->VirtualAddress <= importTable->VirtualAddress &&
             sections->VirtualAddress + sections->VirtualSize >=
-            importTable.VirtualAddress + importTable.Size)
+            importTable->VirtualAddress + importTable->Size)
         {
-          importTableAddress = importTable.VirtualAddress -
+          importTableAddress = importTable->VirtualAddress -
                                sections->VirtualAddress +
                                sections->PointerToRawData;
           break;
@@ -273,35 +274,28 @@ public:
         throw std::runtime_error("could not find import table's section.");
       }
 
-      // handle two cases:
-      //   1. move within section, if there's space
-      //   2. relocate entire section, otherwise
-      uint32_t newImportTableSize = importTable.Size + sizeof(ImportDirectory);
+      std::cout << "   \tRelocating section..." << std::endl;
+      uint32_t newImportTableSize = importTable->Size + sizeof(ImportDirectory);
       uint32_t appendSize = static_cast<uint32_t>(
         6 + payloadDll.length() + dummyFunc.length());
-      uint32_t sectionEmptySpace = sections->SizeOfRawData -
-                                   sections->VirtualSize;
-      if (sectionEmptySpace >= newImportTableSize &&
-          importTable.Size >= appendSize)
-      {
-        std::cout << "Shift" << std::endl;
-      }
-      else
-      {
-        std::cout << "Relocate" << std::endl;
-        uint32_t alignment = (is32_) ?
-          optional_.u32.FileAlignment : optional_.u64.FileAlignment;
-        std::cout << __c(42, "[+]") << "\tFile alignment: " <<
-                    alignment << std::endl;
-        
-        uint32_t newSectionSize = sections->VirtualSize + newImportTableSize +
-                                  appendSize; // virtualSize
-        uint32_t totalSectionSize = Align(newSectionSize, alignment); // rawSize
-        // TODO: allocate bytes for section, copy unto it
-        // then, update `sections` sizes as address
-        // tip: create a separed buffer and write it to output
-        //      after `fileBytes_`
-      }
+      uint32_t alignment = (is32_) ?
+        optional_.u32->FileAlignment : optional_.u64->FileAlignment;
+      std::cout << __c(42, "[+]") << "\tFile alignment: " <<
+                  alignment << std::endl;
+      uint32_t newSectionSize = sections->VirtualSize + newImportTableSize +
+                                appendSize; // virtual
+      uint32_t totalSectionSize = Align(newSectionSize, alignment); // raw
+      uint32_t* endOfFile = (is32_) ?
+        &optional_.u32->SizeOfImage : &optional_.u64->SizeOfImage;
+      sections->PointerToRawData = *endOfFile;
+      *endOfFile = fileSize + totalSectionSize;
+      sections->VirtualSize = newSectionSize;
+      sections->SizeOfRawData = totalSectionSize;
+      // importTable->VirtualAddress stays the same,
+      // because we're movibg the section
+      importTable->Size = newImportTableSize;
+      
+      // TODO: append section to image
     }
     catch (std::exception e)
     {
