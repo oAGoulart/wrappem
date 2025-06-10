@@ -6,7 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- PEFile object to wrap all patching actions
+- PatchPE class to wrap all patching actions
+- Section relocation
 
 ### Changed
 
