@@ -1,5 +1,5 @@
-#include "PEFormat.h"
 #include <memory>
+#include "PEFormat.h"
 
 int main()
 {

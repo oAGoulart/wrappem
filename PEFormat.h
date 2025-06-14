@@ -187,6 +187,7 @@ private:
   } optional_;
   bool is32_;
   uint8_t* fileBytes_;
+  uint8_t* sectionBytes_;
 
 public:
   PatchPE(std::filesystem::path filename,
@@ -285,17 +286,25 @@ public:
       uint32_t newSectionSize = sections->VirtualSize + newImportTableSize +
                                 appendSize; // virtual
       uint32_t totalSectionSize = Align(newSectionSize, alignment); // raw
-      uint32_t* endOfFile = (is32_) ?
-        &optional_.u32->SizeOfImage : &optional_.u64->SizeOfImage;
-      sections->PointerToRawData = *endOfFile;
-      *endOfFile = fileSize + totalSectionSize;
+      sectionBytes_ = new uint8_t[totalSectionSize];
+      memcpy(&sectionBytes_[0], &fileBytes_[sections->PointerToRawData],
+             sections->VirtualSize);
+      memcpy(&sectionBytes_[sections->VirtualSize],
+             &fileBytes_[importTableAddress],
+             importTable->Size);
+      // TODO: append new import and strings
+
+      uint32_t endOfFile = (is32_) ?
+        optional_.u32->SizeOfImage : optional_.u64->SizeOfImage;
+      sections->PointerToRawData = endOfFile;
+      //endOfFile = fileSize + totalSectionSize;
       sections->VirtualSize = newSectionSize;
       sections->SizeOfRawData = totalSectionSize;
       // importTable->VirtualAddress stays the same,
       // because we're movibg the section
       importTable->Size = newImportTableSize;
       
-      // TODO: append section to image
+      // TODO: save image
     }
     catch (std::exception e)
     {
@@ -310,6 +319,10 @@ public:
     if (fileBytes_ != nullptr)
     {
       delete fileBytes_;
+    }
+    if (sectionBytes_ != nullptr)
+    {
+      delete sectionBytes_;
     }
   }
 };
