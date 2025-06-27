@@ -187,21 +187,23 @@ private:
   } optional_;
   bool is32_;
   uint8_t* fileBytes_;
+  uintmax_t fileSize_;
   uint8_t* sectionBytes_;
+  uintmax_t sectionSize_;
 
 public:
-  PatchPE(std::filesystem::path filename,
-          std::string payloadDll, std::string dummyFunc)
+  PatchPE(const std::filesystem::path& filename,
+          const std::string& payloadDll, const std::string& dummyFunc)
   {
     try
     {
       std::ifstream file;
       file.open(filename, std::ios::binary);
 
-      std::cout << "   \tParsing file..." << std::endl;
-      const uintmax_t fileSize = std::filesystem::file_size(filename);
-      fileBytes_ = new uint8_t[fileSize];
-      file.read(reinterpret_cast<char*>(fileBytes_), fileSize);
+      std::cout << "\x20\x20\x20\tParsing file..." << std::endl;
+      fileSize_ = std::filesystem::file_size(filename);
+      fileBytes_ = new uint8_t[fileSize_];
+      file.read(reinterpret_cast<char*>(fileBytes_), fileSize_);
 
       dos_ = reinterpret_cast<DosHeader*>(fileBytes_);
       if (dos_->e_magic[0] != 'M' || dos_->e_magic[1] != 'Z')
@@ -275,38 +277,58 @@ public:
         throw std::runtime_error("could not find import table's section.");
       }
 
-      std::cout << "   \tRelocating section..." << std::endl;
-      uint32_t newImportTableSize = importTable->Size + sizeof(ImportDirectory);
-      uint32_t appendSize = static_cast<uint32_t>(
-        6 + payloadDll.length() + dummyFunc.length());
+      std::cout << "\x20\x20\x20\tRelocating section..." << std::endl;
       uint32_t alignment = (is32_) ?
         optional_.u32->FileAlignment : optional_.u64->FileAlignment;
       std::cout << __c(42, "[+]") << "\tFile alignment: " <<
                   alignment << std::endl;
-      uint32_t newSectionSize = sections->VirtualSize + newImportTableSize +
-                                appendSize; // virtual
-      uint32_t totalSectionSize = Align(newSectionSize, alignment); // raw
-      sectionBytes_ = new uint8_t[totalSectionSize];
+      uint32_t newVirtualSize = sections->VirtualSize +
+                                importTable->Size +
+                                sizeof(ImportDirectory);
+      uint32_t sectionSize_ = Align(newVirtualSize, alignment);
+      sectionBytes_ = new uint8_t[sectionSize_];
       memcpy(&sectionBytes_[0], &fileBytes_[sections->PointerToRawData],
              sections->VirtualSize);
-      memcpy(&sectionBytes_[sections->VirtualSize],
-             &fileBytes_[importTableAddress],
-             importTable->Size);
-      // TODO: append new import and strings
 
-      uint32_t endOfFile = (is32_) ?
-        optional_.u32->SizeOfImage : optional_.u64->SizeOfImage;
-      sections->PointerToRawData = endOfFile;
-      //endOfFile = fileSize + totalSectionSize;
-      sections->VirtualSize = newSectionSize;
-      sections->SizeOfRawData = totalSectionSize;
-      // importTable->VirtualAddress stays the same,
-      // because we're movibg the section
-      importTable->Size = newImportTableSize;
+      // NOTE: reuse old table space for strings and lookup table
+      std::cout << "\x20\x20\x20\tPlacing strings and lookup table..."
+                << std::endl;
+      memcpy(&sectionBytes_[0], payloadDll.data(), payloadDll.length());
+      uint32_t index = payloadDll.length();
+      memset(&sectionBytes_[index], 0, 3);
+      index += 3;
+      uint32_t offset = index;
+      memcpy(&sectionBytes_[index], dummyFunc.data(), dummyFunc.length());
+      index += dummyFunc.length();
+      memset(&sectionBytes_[index], 0, 1);
+      index += 1;
+      offset = index;
+      memset(&sectionBytes_[index], sections->VirtualAddress + offset, 4);
+
+      // NOTE: duplicate import table to add new entry
+      std::cout << "\x20\x20\x20\tPlacing new import entry..." << std::endl;
+      index = sections->VirtualSize;
+      memcpy(&sectionBytes_[index], &fileBytes_[sections->PointerToRawData],
+             importTable->Size);
+      index += importTable->Size;
+      memset(&sectionBytes_[index], 0, 12);
+      index += 12;
+      memset(&sectionBytes_[index], sections->VirtualAddress, 4);
+      index += 4;
+      memset(&sectionBytes_[index], sections->VirtualAddress + offset, 4);
       
-      // TODO: save image
+      std::cout << "\x20\x20\x20\tPatching addresses and sizes..." << std::endl;
+      importTable->VirtualAddress += sections->VirtualSize;
+      importTable->Size += sizeof(ImportDirectory);
+
+      uint32_t* endOfFile = (is32_) ?
+        &optional_.u32->SizeOfImage : &optional_.u64->SizeOfImage;
+      sections->PointerToRawData = *endOfFile;
+      *endOfFile = fileSize_ + sectionSize_;
+      sections->VirtualSize = newVirtualSize;
+      sections->SizeOfRawData = sectionSize_;
     }
-    catch (std::exception e)
+    catch (const std::exception& e)
     {
       std::string err = "PEFormat ctor: ";
       err.append(e.what());
@@ -324,6 +346,23 @@ public:
     {
       delete sectionBytes_;
     }
+  }
+
+  bool
+  Save(std::filesystem::path filename)
+  {
+    std::cout << "\x20\x20\x20\tSaving to output file..." << std::endl;
+    std::filesystem::path dir = filename.remove_filename();
+    if (!std::filesystem::exists(dir))
+    {
+      std::filesystem::create_directories(dir);
+    }
+
+    std::ofstream ofile;
+    ofile.open(filename, ofile.binary | ofile.out);
+    ofile.write(reinterpret_cast<char*>(fileBytes_), fileSize_);
+    ofile.write(reinterpret_cast<char*>(sectionBytes_), sectionSize_);
+    ofile.close();
   }
 };
 
