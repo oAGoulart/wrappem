@@ -308,14 +308,14 @@ public:
       // NOTE: duplicate import table to add new entry
       std::cout << "    Placing new import entry..." << std::endl;
       index = sections->VirtualSize;
-      memcpy(&sectionBytes_[index], &fileBytes_[importTableAddress],
-             importTable->Size);
-      index += importTable->Size;
       memset(&sectionBytes_[index], 0, 12);
       index += 12;
       memset(&sectionBytes_[index], sections->VirtualAddress, 4);
       index += 4;
       memset(&sectionBytes_[index], sections->VirtualAddress + offset, 4);
+      index += 4;
+      memcpy(&sectionBytes_[index], &fileBytes_[importTableAddress],
+             importTable->Size);
       
       std::cout << "    Patching addresses and sizes..." << std::endl;
       importTable->VirtualAddress += sections->VirtualSize;
