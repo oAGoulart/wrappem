@@ -1,3 +1,5 @@
 build/
+out/
 *.exe
+*.dll
 .vscode

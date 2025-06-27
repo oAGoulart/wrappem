@@ -352,14 +352,13 @@ public:
   Save(std::filesystem::path filename)
   {
     std::cout << "    Saving to output file..." << std::endl;
-    std::filesystem::path dir = filename.remove_filename();
-    if (!std::filesystem::exists(dir))
+    std::filesystem::path dir = filename;
+    if (!std::filesystem::exists(dir.remove_filename()))
     {
       std::filesystem::create_directories(dir);
     }
 
-    std::ofstream ofile;
-    ofile.open(filename, ofile.binary | ofile.out);
+    std::ofstream ofile(filename, std::ios::binary | std::ios::out);
     ofile.write(reinterpret_cast<char*>(fileBytes_), fileSize_);
     ofile.write(reinterpret_cast<char*>(sectionBytes_), sectionSize_);
     ofile.close();
