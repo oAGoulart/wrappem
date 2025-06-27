@@ -44,6 +44,7 @@ main(int argc, char* argv[])
     }
     auto f = std::make_unique<wrappem::PatchPE>(argv[1], argv[2], argv[3]);
     f->Save(argv[4]);
+    std::cout << __c(32, "    DONE!") << std::endl;
   }
   catch(const std::exception& e)
   {

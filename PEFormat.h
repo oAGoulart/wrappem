@@ -308,7 +308,7 @@ public:
       // NOTE: duplicate import table to add new entry
       std::cout << "    Placing new import entry..." << std::endl;
       index = sections->VirtualSize;
-      memcpy(&sectionBytes_[index], &fileBytes_[sections->PointerToRawData],
+      memcpy(&sectionBytes_[index], &fileBytes_[importTableAddress],
              importTable->Size);
       index += importTable->Size;
       memset(&sectionBytes_[index], 0, 12);
