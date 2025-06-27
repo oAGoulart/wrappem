@@ -348,7 +348,7 @@ public:
     }
   }
 
-  bool
+  void
   Save(std::filesystem::path filename)
   {
     std::cout << "    Saving to output file..." << std::endl;
