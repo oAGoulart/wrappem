@@ -4,6 +4,8 @@
 #include <iostream>
 #include "shared.h"
 
+#pragma warning(disable: 4267)
+
 namespace wrappem {
 
 inline constexpr const char*
@@ -82,7 +84,7 @@ struct DataDirectory
 
 struct ImportDirectory
 {
-  uint32_t rvaImportLookupTable; // 4 bytes each
+  uint32_t rvaImportLookupTable;
   uint32_t TimeDateStamp;
   uint32_t ForwarderChain;
   uint32_t rvaModuleName;
@@ -218,24 +220,24 @@ public:
         throw std::runtime_error("file has invalid NT header.");
       }
 
-      std::cout << __c(42, "[+]") << " Machine: " <<
-                   MachineType(nt_->FileHeader.Machine) << std::endl;
-      std::cout << __c(42, "[+]") << " Number of section: " <<
-                   nt_->FileHeader.NumberOfSections << std::endl;
-      std::cout << __c(42, "[+]") << " Size of optional header: " <<
-                   nt_->FileHeader.SizeOfOptionalHeader << std::endl;
+      std::cout << __c(42, "[+]") << " Machine: "
+                << MachineType(nt_->FileHeader.Machine) << std::endl;
+      std::cout << __c(42, "[+]") << " Number of section: "
+                << nt_->FileHeader.NumberOfSections << std::endl;
+      std::cout << __c(42, "[+]") << " Size of optional header: "
+                << nt_->FileHeader.SizeOfOptionalHeader << std::endl;
       
       if (nt_->FileHeader.SizeOfOptionalHeader == sizeof(OptionalHeader32))
       {
         is32_ = true;
         optional_.u32 = reinterpret_cast<OptionalHeader32*>(
-                        fileBytes_ + dos_->e_lfanew + sizeof(NtHeader));
+          fileBytes_ + dos_->e_lfanew + sizeof(NtHeader));
       }
       else
       {
         is32_ = false;
         optional_.u64 = reinterpret_cast<OptionalHeader64*>(
-                        fileBytes_ + dos_->e_lfanew + sizeof(NtHeader));
+          fileBytes_ + dos_->e_lfanew + sizeof(NtHeader));
       }
 
       DataDirectory* importTable = (is32_) ?
@@ -244,95 +246,84 @@ public:
       {
         throw std::runtime_error("file has no import table directory.");
       }
-      std::cout << __c(42, "[+]") << " Import table size (bytes): " <<
-                   importTable->Size << std::endl;
+      std::cout << __c(42, "[+]") << " Import table size (bytes): "
+                << importTable->Size << std::endl;
       
       // IMPORTANT: find which section the import table is in
-      uint32_t importTableAddress = 0;
+      uint32_t itable = 0;
+      SectionParams* idata = nullptr;
       SectionParams* sections = reinterpret_cast<SectionParams*>(
         fileBytes_ + dos_->e_lfanew + sizeof(NtHeader) +
         nt_->FileHeader.SizeOfOptionalHeader);
-      for (uint16_t i = 0; i < nt_->FileHeader.NumberOfSections; i++)
+      for (uint16_t i = 0; i < nt_->FileHeader.NumberOfSections - 1; i++)
       {
         if (sections->VirtualAddress <= importTable->VirtualAddress &&
             sections->VirtualAddress + sections->VirtualSize >=
             importTable->VirtualAddress + importTable->Size)
         {
-          importTableAddress = importTable->VirtualAddress -
-                               sections->VirtualAddress +
-                               sections->PointerToRawData;
-          break;
+          idata = sections;
+          itable = importTable->VirtualAddress - idata->VirtualAddress +
+                   idata->PointerToRawData;
+          std::cout << __c(42, "[+]") << " Import table at section: "
+                    << idata->Name << std::endl;
+          std::cout << __c(42, "[+]") << " Import table address: "
+                    << itable << std::endl;
         }
         sections++;
       }
-      if (importTableAddress != 0)
+      if (idata == nullptr)
       {
-        std::cout << __c(42, "[+]") << " Import table at section: " <<
-                     sections->Name << std::endl;
-        std::cout << __c(42, "[+]") << " Import table address: " <<
-                     importTableAddress << std::endl;
-      }
-      else
-      {
-        throw std::runtime_error("could not find import table's section.");
+        throw std::runtime_error("could not find .idata section.");
       }
 
-      std::cout << "    Relocating section..." << std::endl;
-      uint32_t alignment = (is32_) ?
+      std::cout << "    Updating section..." << std::endl;
+      /*uint32_t alignment = (is32_) ?
         optional_.u32->FileAlignment : optional_.u64->FileAlignment;
-      std::cout << __c(42, "[+]") << " File alignment: " <<
-                  alignment << std::endl;
-      uint32_t newVirtualSize = sections->VirtualSize +
-                                importTable->Size +
-                                sizeof(ImportDirectory);
-      sectionSize_ = Align(newVirtualSize, alignment);
-      sectionBytes_ = reinterpret_cast<uint8_t*>(calloc(sectionSize_, 1));
-      memcpy(&sectionBytes_[0], &fileBytes_[sections->PointerToRawData],
-             sections->VirtualSize);
+      std::cout << __c(42, "[+]") << " File alignment: "
+                << alignment << std::endl;*/
 
-      // NOTE: reuse old table space for strings and lookup table
       std::cout << "    Placing strings and lookup table..."
                 << std::endl;
-      memcpy(&sectionBytes_[0], payload.data(), payload.length());
-      uint32_t index = static_cast<uint32_t>(payload.length());
-      memset(&sectionBytes_[index], 0, 3);
-      index += 3;
-      uint32_t offset = index - 2;
-      memcpy(&sectionBytes_[index], dummyname.data(), dummyname.length());
-      index += static_cast<uint32_t>(dummyname.length());
-      memset(&sectionBytes_[index], 0, 1);
+      uint32_t index = idata->VirtualSize + idata->PointerToRawData;
+      memset(fileBytes_ + index, 1, 2);
+      index += 2;
+      memcpy(fileBytes_ + index, dummyname.data(), dummyname.length());
+      index += dummyname.length();
+      memset(fileBytes_ + index, 0, 1);
       index += 1;
-      offset += sections->VirtualAddress;
-      memcpy(&sectionBytes_[index], &offset, 4);
+      memcpy(fileBytes_ + index, payload.data(), payload.length());
+      index += payload.length();
+      memset(fileBytes_ + index, 0, 2);
+      index += 2;
+      uint32_t offset = idata->VirtualAddress + idata->VirtualSize;
+      memcpy(fileBytes_ + index, &offset, 4);
       index += 4;
-      memset(&sectionBytes_[index], 0, 8);
+      memset(fileBytes_ + index, 0, 4);
 
-      // NOTE: duplicate import table to add new entry
       std::cout << "    Placing new import entry..." << std::endl;
-      offset = index + sections->VirtualAddress;
-      index = sections->VirtualSize;
-      memcpy(&sectionBytes_[index], &offset, 4);
+      offset = idata->VirtualAddress + idata->VirtualSize +
+               payload.length() + dummyname.length() + 5;
+      index = itable + importTable->Size - sizeof(ImportDirectory) * 2;
+      memcpy(fileBytes_ + index, &offset, 4);
       index += 4;
-      memset(&sectionBytes_[index], 0, 8);
+      memset(fileBytes_ + index, 0, 8);
       index += 8;
-      offset = sections->VirtualAddress;
-      memcpy(&sectionBytes_[index], &offset, 4);
+      offset = idata->VirtualAddress + idata->VirtualSize +
+               dummyname.length() + 3;
+      memcpy(fileBytes_ + index, &offset, 4);
       index += 4;
-      memset(&sectionBytes_[index], 0, 4);
+      offset = idata->VirtualAddress + idata->VirtualSize;
+      memcpy(fileBytes_ + index, &offset, 4);
       index += 4;
-      memcpy(&sectionBytes_[index], &fileBytes_[importTableAddress],
-             importTable->Size);
+      //memset(fileBytes_ + index, 0, sizeof(ImportDirectory));
       
-      std::cout << "    Patching addresses and sizes..." << std::endl;
-      importTable->VirtualAddress += sections->VirtualSize;
-      importTable->Size += sizeof(ImportDirectory);
-
-      uint32_t* endOfFile = (is32_) ?
+      std::cout << "    Patching size..." << std::endl;
+      //importTable->Size += sizeof(ImportDirectory);
+      /*uint32_t* endOfFile = (is32_) ?
         &optional_.u32->SizeOfImage : &optional_.u64->SizeOfImage;
-      sections->PointerToRawData = *endOfFile;
-      *endOfFile = static_cast<uint32_t>(fileSize_ + sectionSize_);
-      sections->VirtualSize = newVirtualSize;
-      sections->SizeOfRawData = static_cast<uint32_t>(sectionSize_);
+      idata->PointerToRawData = *endOfFile;
+      *endOfFile = static_cast<uint32_t>(fileSize_ + sectionSize_);*/
+      idata->VirtualSize += dummyname.length() + payload.length() + 13;
     }
     catch (const std::exception& e)
     {
@@ -366,7 +357,7 @@ public:
 
     std::ofstream ofile(filename, std::ios::binary | std::ios::out);
     ofile.write(reinterpret_cast<char*>(fileBytes_), fileSize_);
-    ofile.write(reinterpret_cast<char*>(sectionBytes_), sectionSize_);
+    //ofile.write(reinterpret_cast<char*>(sectionBytes_), sectionSize_);
     ofile.close();
   }
 };
