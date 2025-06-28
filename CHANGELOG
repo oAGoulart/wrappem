@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.0.0] - 2025-06-28
+
 ### Added
 
 - PatchPE class to wrap all patching actions
@@ -85,7 +87,8 @@ All notable changes to this project will be documented in this file.
 - Initial files
 
 
-[unreleased]: https://github.com/oAGoulart/vitrina/compare/v0.2.2..HEAD
+[unreleased]: https://github.com/oAGoulart/vitrina/compare/v1.0.0..HEAD
+[1.0.0]: https://github.com/oAGoulart/vitrina/releases/tag/v1.0.0
 [0.2.2]: https://github.com/oAGoulart/vitrina/releases/tag/v0.2.2
 [0.2.1]: https://github.com/oAGoulart/vitrina/releases/tag/v0.2.1
 [0.2.0]: https://github.com/oAGoulart/vitrina/releases/tag/v0.2.0

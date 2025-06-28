@@ -4,6 +4,8 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/oAGoulart/wrappem?color=green)
 [![License](https://img.shields.io/badge/License-MS--RL-blue)](./LICENSE)
 
+**WARNING:** This version replaces the last import on the table, since expanding the import table requires modifying all *RVAs* inside `.idata`. I am, as of June 2025, working on a version that can do this.
+
 This is a small tool that can generate a hooked PE file which will import your custom DLL into its process.
 With this you can inject a payload into a process using a DLL.
 
