@@ -193,7 +193,7 @@ private:
 
 public:
   PatchPE(const std::filesystem::path& filename,
-          const std::string& payloadDll, const std::string& dummyFunc)
+          const std::string& payload, const std::string& dummyname)
   {
     try
     {
@@ -293,16 +293,16 @@ public:
       // NOTE: reuse old table space for strings and lookup table
       std::cout << "    Placing strings and lookup table..."
                 << std::endl;
-      memcpy(&sectionBytes_[0], payloadDll.data(), payloadDll.length());
-      uint32_t index = static_cast<uint32_t>(payloadDll.length());
+      memcpy(&sectionBytes_[0], payload.data(), payload.length());
+      uint32_t index = static_cast<uint32_t>(payload.length());
       memset(&sectionBytes_[index], 0, 3);
       index += 3;
-      uint32_t offset = index;
-      memcpy(&sectionBytes_[index], dummyFunc.data(), dummyFunc.length());
-      index += static_cast<uint32_t>(dummyFunc.length());
+      uint32_t offset = index - 2;
+      memcpy(&sectionBytes_[index], dummyname.data(), dummyname.length());
+      index += static_cast<uint32_t>(dummyname.length());
       memset(&sectionBytes_[index], 0, 1);
       index += 1;
-      offset = index + sections->VirtualAddress;
+      offset += sections->VirtualAddress;
       memcpy(&sectionBytes_[index], &offset, 4);
       index += 4;
       memset(&sectionBytes_[index], 0, 8);
@@ -312,6 +312,7 @@ public:
       offset = index + sections->VirtualAddress;
       index = sections->VirtualSize;
       memcpy(&sectionBytes_[index], &offset, 4);
+      index += 4;
       memset(&sectionBytes_[index], 0, 8);
       index += 8;
       offset = sections->VirtualAddress;
