@@ -286,7 +286,7 @@ public:
                                 importTable->Size +
                                 sizeof(ImportDirectory);
       sectionSize_ = Align(newVirtualSize, alignment);
-      sectionBytes_ = new uint8_t[sectionSize_];
+      sectionBytes_ = reinterpret_cast<uint8_t*>(calloc(sectionSize_, 1));
       memcpy(&sectionBytes_[0], &fileBytes_[sections->PointerToRawData],
              sections->VirtualSize);
 
@@ -302,17 +302,22 @@ public:
       index += static_cast<uint32_t>(dummyFunc.length());
       memset(&sectionBytes_[index], 0, 1);
       index += 1;
-      offset = index;
-      memset(&sectionBytes_[index], sections->VirtualAddress + offset, 4);
+      offset = index + sections->VirtualAddress;
+      memcpy(&sectionBytes_[index], &offset, 4);
+      index += 4;
+      memset(&sectionBytes_[index], 0, 8);
 
       // NOTE: duplicate import table to add new entry
       std::cout << "    Placing new import entry..." << std::endl;
+      offset = index + sections->VirtualAddress;
       index = sections->VirtualSize;
-      memset(&sectionBytes_[index], 0, 12);
-      index += 12;
-      memset(&sectionBytes_[index], sections->VirtualAddress, 4);
+      memcpy(&sectionBytes_[index], &offset, 4);
+      memset(&sectionBytes_[index], 0, 8);
+      index += 8;
+      offset = sections->VirtualAddress;
+      memcpy(&sectionBytes_[index], &offset, 4);
       index += 4;
-      memset(&sectionBytes_[index], sections->VirtualAddress + offset, 4);
+      memset(&sectionBytes_[index], 0, 4);
       index += 4;
       memcpy(&sectionBytes_[index], &fileBytes_[importTableAddress],
              importTable->Size);
@@ -344,7 +349,7 @@ public:
     }
     if (sectionBytes_ != nullptr)
     {
-      delete sectionBytes_;
+      free(sectionBytes_);
     }
   }
 
