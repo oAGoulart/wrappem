@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.0.1] - 2025-07-22
+
 - Added correct handling of import table relocation
 - Added identification of two other methods for import table injection
 
@@ -56,7 +58,8 @@ All notable changes to this project will be documented in this file.
 - Added initial files
 
 
-[unreleased]: https://github.com/oAGoulart/wrappem/compare/v1.0.0..HEAD
+[unreleased]: https://github.com/oAGoulart/wrappem/compare/v1.0.1..HEAD
+[1.0.1]: https://github.com/oAGoulart/wrappem/releases/tag/v1.0.1
 [1.0.0]: https://github.com/oAGoulart/wrappem/releases/tag/v1.0.0
 [0.2.2]: https://github.com/oAGoulart/wrappem/releases/tag/v0.2.2
 [0.2.1]: https://github.com/oAGoulart/wrappem/releases/tag/v0.2.1

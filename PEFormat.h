@@ -320,7 +320,7 @@ public:
         }
         memset(tmp + offset, 0, 4);
         offset += 4;
-        // NOTE: thunk data
+        // NOTE: thunk data, same as above
         memcpy(tmp + offset, &rva, 4);
         iaTable_->rvaImportAddressTable = importTable_->VirtualAddress + offset;
         offset += 4;
@@ -347,8 +347,8 @@ public:
       else if (HasSpaceForNewSection_())
       {
         std::cout << "move import data section..." << std::endl;
-        // TODO: create new entry, move import table and resources,
-        //       relocate import table (re-use RELOCATE method)
+        // TODO: create new section entry, move import table and resources
+        //       re-use code from EXPAND
         throw std::runtime_error("unavailable CREATE method");
       }
       else
