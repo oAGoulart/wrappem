@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Added correct handling of import table relocation
+- Added identification of two other methods for import table injection
+
 ## [1.0.0] - 2025-06-28
 
 - Added `PatchPE` class to wrap all patching actions

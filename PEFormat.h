@@ -38,6 +38,12 @@ Align(const uint32_t value, const uint32_t alignment)
   return result;
 }
 
+inline constexpr uint32_t
+Pad(const uint32_t size, const uint32_t padding)
+{
+  return size + (padding - (size % padding));
+}
+
 struct DosHeader
 {
   uint8_t  e_magic[2];
@@ -188,9 +194,13 @@ class PatchPE
 private:
   enum class EmptySpace {
     SPACE_NONE,
-    SPACE_IDATA,
-    SPACE_SECTION
+    SPACE_EXPAND,
+    SPACE_RELOCATE,
+    SPACE_CREATE
   };
+
+  const char magic_[2] = { 'M', 'Z' };
+  const char sig_[4] = { 'P', 'E', '\0', '\0' };
 
   bool is32_;
   EmptySpace hasSpace_;
@@ -209,8 +219,6 @@ private:
   // NOTE: buffers
   uint8_t* fileBytes_;
   uintmax_t fileSize_;
-  uint8_t* appendBytes_;
-  uintmax_t appendSize_;
 
   EmptySpace FindEmptySpace_(const std::size_t min);
   bool HasSpaceForNewSection_();
@@ -231,13 +239,12 @@ public:
       file.close();
 
       dos_ = reinterpret_cast<DosHeader*>(fileBytes_);
-      if (dos_->e_magic[0] != 'M' || dos_->e_magic[1] != 'Z')
+      if (memcmp(dos_->e_magic, magic_, 2) != 0)
       {
         throw std::runtime_error("file has invalid DOS header.");
       }
       nt_ = reinterpret_cast<NtHeader*>(fileBytes_ + dos_->e_lfanew);
-      if (nt_->Signature[0] != 'P' || nt_->Signature[1] != 'E' ||
-          nt_->Signature[2] != '\0' || nt_->Signature[3] != '\0')
+      if (memcmp(nt_->Signature, sig_, 4) != 0)
       {
         throw std::runtime_error("file has invalid NT header.");
       }
@@ -271,24 +278,82 @@ public:
       std::cout << __c(42, "[+]") << " Import table size (bytes): "
                 << importTable_->Size << std::endl;
       
-      uint32_t minSize = sizeof(ImportDirectory) + 9 +
-                         dummyname.length() + payload.length();
+      const uint32_t ltSize = 4 * ((is32_) ? 4 : 8);
+      uint32_t minSize = sizeof(ImportDirectory) + ltSize;
+      minSize += Pad(dummyname.length() + 3, 2);
+      minSize += Pad(payload.length() + 1, 2);
+      EmptySpace method = FindEmptySpace_(minSize);
+
       std::cout << "    Method chosen: ";
-      if (FindEmptySpace_(minSize) == EmptySpace::SPACE_IDATA)
+      if (method == EmptySpace::SPACE_RELOCATE)
       {
-        std::cout << "section virtual space resizing..." << std::endl;
+        std::cout << "relocate import table..." << std::endl;
+        ImportDirectory* dest = reinterpret_cast<ImportDirectory*>(
+          fileBytes_ + idataSection_->PointerToRawData +
+          idataSection_->VirtualSize);
+        memcpy(dest + 1, iaTable_, importTable_->Size);
+        uint8_t* tmp = reinterpret_cast<uint8_t*>(iaTable_);
+        iaTable_ = dest;
+        iaTable_->ForwarderChain = 0;
+        iaTable_->TimeDateStamp = 0;
+        memset(tmp, 0, 2); // FIXME: this assumes ordinal is 0
+        uint32_t offset = 2;
+        memcpy(tmp + offset, dummyname.c_str(), dummyname.length());
+        offset += dummyname.length();
+        uint32_t padding = Pad(dummyname.length() + 1, 2);
+        memset(tmp + offset, 0, padding);
+        offset += padding;
+        memcpy(tmp + offset, payload.c_str(), payload.length());
+        iaTable_->rvaModuleName = importTable_->VirtualAddress + offset;
+        offset += payload.length();
+        padding = Pad(payload.length() + 1, 2);
+        memset(tmp + offset, 0, padding);
+        offset += padding;
+        uint32_t rva = importTable_->VirtualAddress;
+        memcpy(tmp + offset, &rva, 4);
+        iaTable_->rvaImportLookupTable = importTable_->VirtualAddress + offset;
+        offset += 4;
+        if (!is32_)
+        {
+          memset(tmp + offset, 0, 8);
+          offset += 8;
+        }
+        memset(tmp + offset, 0, 4);
+        offset += 4;
+        // NOTE: thunk data
+        memcpy(tmp + offset, &rva, 4);
+        iaTable_->rvaImportAddressTable = importTable_->VirtualAddress + offset;
+        offset += 4;
+        if (!is32_)
+        {
+          memset(tmp + offset, 0, 8);
+          offset += 8;
+        }
+        memset(tmp + offset, 0, 4 + sizeof(ImportDirectory));
+        // offset += 4 + sizeof(ImportDirectory);
+        // NOTE: patch addresses and sizes
+        importTable_->VirtualAddress = idataSection_->VirtualSize +
+                                       idataSection_->VirtualAddress;
+        idataSection_->VirtualSize += minSize + importTable_->Size;
+        importTable_->Size += sizeof(ImportDirectory);
+      }
+      else if (method == EmptySpace::SPACE_EXPAND)
+      {
+        std::cout << "expand import table..." << std::endl;
         // TODO: copy all resources, iterate import table,
         //       relocate each rva resource
+        throw std::runtime_error("unavailable EXPAND method");
       }
       else if (HasSpaceForNewSection_())
       {
-        std::cout << "new section creation..." << std::endl;
+        std::cout << "move import data section..." << std::endl;
         // TODO: create new entry, move import table and resources,
-        //       recalculate each rva
+        //       relocate import table (re-use RELOCATE method)
+        throw std::runtime_error("unavailable CREATE method");
       }
       else
       {
-        throw std::runtime_error("no method suitable for import injection");
+        throw std::runtime_error("no method is suitable for import injection");
       }
     }
     catch (const std::exception& e)
@@ -305,10 +370,6 @@ public:
     {
       delete fileBytes_;
     }
-    if (appendBytes_ != nullptr)
-    {
-      delete appendBytes_;
-    }
   }
 
   void
@@ -322,10 +383,6 @@ public:
     }
     std::ofstream ofile(filename, std::ios::binary | std::ios::out);
     ofile.write(reinterpret_cast<char*>(fileBytes_), fileSize_);
-    if (appendSize_ > 0)
-    {
-      ofile.write(reinterpret_cast<char*>(appendBytes_), appendSize_);
-    }
     ofile.close();
   }
 };

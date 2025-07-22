@@ -9,8 +9,8 @@ wrappem::PatchPE::FindEmptySpace_(const std::size_t min)
   lastSection_ = &idataSection_[nt_->FileHeader.NumberOfSections - 1];
   for (uint16_t i = 0; i < nt_->FileHeader.NumberOfSections; i++)
   {
-    if (lastSection_->VirtualAddress <= importTable_->VirtualAddress &&
-        lastSection_->VirtualAddress + lastSection_->VirtualSize >=
+    if (idataSection_->VirtualAddress <= importTable_->VirtualAddress &&
+        idataSection_->VirtualAddress + idataSection_->VirtualSize >=
         importTable_->VirtualAddress + importTable_->Size)
     {
       uint32_t ia = importTable_->VirtualAddress -
@@ -21,9 +21,15 @@ wrappem::PatchPE::FindEmptySpace_(const std::size_t min)
       std::cout << __c(42, "[+]") << " Import table address: "
                 << ia << std::endl;
       iaTable_ = reinterpret_cast<ImportDirectory*>(fileBytes_ + ia);
-      if (idataSection_->SizeOfRawData - idataSection_->VirtualSize <= min)
+      uint32_t diff = idataSection_->SizeOfRawData - idataSection_->VirtualSize;
+      if (diff >= importTable_->Size + sizeof(ImportDirectory) &&
+          importTable_->Size >= min)
       {
-        return EmptySpace::SPACE_IDATA;
+        return EmptySpace::SPACE_RELOCATE;
+      }
+      if (diff >= min)
+      {
+        return EmptySpace::SPACE_EXPAND;
       }
       break;
     }
@@ -31,9 +37,9 @@ wrappem::PatchPE::FindEmptySpace_(const std::size_t min)
   }
   if (idataSection_ == nullptr)
   {
-    throw std::runtime_error("could not find .idata section.");
+    throw std::runtime_error("could not find import data section.");
   }
-  return EmptySpace::SPACE_SECTION;
+  return EmptySpace::SPACE_CREATE;
 }
 
 bool wrappem::PatchPE::HasSpaceForNewSection_()
