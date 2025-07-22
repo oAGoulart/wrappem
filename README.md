@@ -6,16 +6,73 @@
 
 **WARNING:** This version can only work if there's enough empty space on `idata` section. Two more methods are being worked on to allow for cases where not enough space is available.
 
-This is a small tool that can generate a hooked PE file which will import your custom DLL into its process.
-With this you can inject a payload into a process using a DLL.
+From old version:
+> This is a small tool that can generate a hooked PE file which will import your custom DLL into its process.
+> With this you can inject a payload into a process using a DLL.
+> I took inspiration to make this tool from Michael Chourdakis' [article], but his implementation was not suited for my needs, so after some research and testing I created this tool.
+> The first implementation I made used the same method described in the article to create a proxy DLL, this version however modifies a DLL/Exe imports table to force Windows to import your payload DLL into the process.
+> If you're interested in this method you can learn more about [PE Format](https://docs.microsoft.com/en-us/windows/win32/debug/pe-format) and the [Import Table](http://sandsprite.com/CodeStuff/Understanding_imports.html) (it's a lot of stuff tho, so get some coffee first). Also, consider checking my brief explanation on how this tool works here: [Injecting payloads in DLLs](https://oagoulart.github.io/rambles/injecting-payloads-in-dlls).
 
-I took inspiration to make this tool from Michael Chourdakis' [article], but his implementation was not suited for my needs, so after some research and testing I created this tool.
+## Method I: import table relocation
 
-The first implementation I made used the same method described in the article to create a proxy DLL, this version however modifies a DLL/Exe imports table to force Windows to import your payload DLL into the process.
+**Requirements:**
+1. Enough padding space for import table size plus one entry;
+1. Import table size bigger or equal to payload data size.
 
-If you're interested in this method you can learn more about [PE Format](https://docs.microsoft.com/en-us/windows/win32/debug/pe-format) and the [Import Table](http://sandsprite.com/CodeStuff/Understanding_imports.html) (it's a lot of stuff tho, so get some coffee first). Also, consider checking my brief explanation on how this tool works here: [Injecting payloads in DLLs](https://oagoulart.github.io/rambles/injecting-payloads-in-dlls).
+Standard `idata` section structure:
 
-**UPDATE (May 27, 2025):** v1.x is a refactored version of the same method used in v0.2.2. This code was originally written in 2021, but was forgotten in one of my backup drives.
+```text
+────────┬──────────────────┬──────
+ .idata │                  │ start
+section │  address tables  │      
+        │     (thunk)      │      
+     ┌──┼                  ◄─┐    
+     │  ├──────────────────┤ │    
+     │  │                  ┼─┘    
+     │  │   import table   ┼──┐   
+     │  │                  ┼─┐│   
+     │  ├──────────────────┤ ││   
+     │  │                  ◄─┘│   
+     │  │   lookup tables  │  │   
+     │  │      (32/64)     │  │   
+     │┌─┼                  │  │   
+     ││ ├──────────────────┤  │   
+     │└─►                  ◄──┘   
+     │  │names and ordinals│      
+     └──►                  │      
+        └──────────────────┘      
+        :                  :      
+        :     padding      :      
+        :                  : end  
+──────────────────────────────────
+```
+After relocation:
+```text
+────────┬──────────────────┬──────
+ .idata │                  │ start
+section │  address tables  │      
+        │     (thunk)      │      
+   ┌────►                  ┼─┐    
+   │    ├──────────────────┤ │    
+   │    +                  + │    
+   │    +   payload data   + │    
+   │┌───►                  + │    
+   ││   ├──────────────────┤ │    
+   ││   │                  │ │    
+   ││   │   lookup tables  │ │    
+   ││┌──►      (32/64)     │ │    
+   │││┌─┼                  │ │    
+   ││││ ├──────────────────┤ │    
+   │││└─►                  ◄─┘    
+   │││  │names and ordinals│      
+   │││  │                  ◄─┐    
+   │││  ├──────────────────┤ │    
+   ││└──┼                  ┼─┘    
+   │└───┼   import table   │      
+   └────┼                  │ end  
+────────┴──────────────────┴──────
+```
+
 
 ## Usage
 
