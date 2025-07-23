@@ -19,83 +19,105 @@ From old version:
 1. Enough padding space for import table size plus one entry;
 1. Import table size bigger or equal to payload data size.
 
-Standard `idata` section structure:
+```text
+ standard idata section structure               after relocation
+────────┬──────────────────┬──────    ────────┬──────────────────┬──────
+ .idata │                  │ start     .idata │                  │ start
+section │  address tables  │          section │  address tables  │
+        │     (thunk)      │                  │     (thunk)      │
+     ┌──┼                  ◄─┐           ┌────►                  ┼─┐
+     │  ├──────────────────┤ │           │    ├──────────────────┤ │
+     │  │                  ┼─┘           │    +                  + │
+     │  │   import table   ┼──┐          │    +   payload data   + │
+     │  │                  ┼─┐│          │┌───►                  + │
+     │  ├──────────────────┤ ││          ││   ├──────────────────┤ │
+     │  │                  ◄─┘│          ││   │                  │ │
+     │  │   lookup tables  │  │          ││   │   lookup tables  │ │
+     │  │      (32/64)     │  │          ││┌──►      (32/64)     │ │
+     │┌─┼                  │  │          │││┌─┼                  │ │
+     ││ ├──────────────────┤  │          ││││ ├──────────────────┤ │
+     │└─►                  ◄──┘          │││└─►                  ◄─┘
+     │  │names and ordinals│             │││  │names and ordinals│
+     └──►                  │             │││  │                  ◄─┐
+        └──────────────────┘             │││  ├──────────────────┤ │
+        :                  :             ││└──┼                  ┼─┘
+        :     padding      :             │└───┼   import table   │
+        :                  : end         └────┼                  │ end 
+──────────────────────────────────    ────────┴──────────────────┴──────
+```
 
+## Method II: import table expansion
+
+**NOT IMPLEMENTED YET**
+
+**Requirements:**
+1. Enough padding space for one table entry plus data;
+1. All relative virtual addresses (RVAs) in `idata` must be re-calculated.
+
+After import table expansion and re-building:
 ```text
 ────────┬──────────────────┬──────
- .idata │                  │ start
-section │  address tables  │      
-        │     (thunk)      │      
-     ┌──┼                  ◄─┐    
-     │  ├──────────────────┤ │    
-     │  │                  ┼─┘    
-     │  │   import table   ┼──┐   
-     │  │                  ┼─┐│   
-     │  ├──────────────────┤ ││   
-     │  │                  ◄─┘│   
-     │  │   lookup tables  │  │   
-     │  │      (32/64)     │  │   
-     │┌─┼                  │  │   
-     ││ ├──────────────────┤  │   
-     │└─►                  ◄──┘   
-     │  │names and ordinals│      
-     └──►                  │      
-        └──────────────────┘      
-        :                  :      
-        :     padding      :      
-        :                  : end  
+ .idata │  address tables  │ start
+section │     (thunk)      │
+        │- - - - - - - - - │
+     ┌──┼     payload      ◄─┐
+     │  ├──────────────────┤ │
+     │  │   import table   ┼─┘
+     │  │- - - - - - - - - ┼──┐
+     │  │     payload      ┼─┐│
+     │  ├──────────────────┤ ││
+     │  │   lookup tables  ◄─┘│
+     │┌─┼      (32/64)     │  │
+     ││ │- - - - - - - - - │  │
+     ││ │     payload      │  │
+     ││ ├──────────────────┤  │
+     │└─►                  ◄──┘
+     │  │names and ordinals│
+     │  │- - - - - - - - - │
+     │  │     payload      │
+     └──►                  │
+        └──────────────────┘
+        :     padding      : end
 ──────────────────────────────────
 ```
-After relocation:
+
+## Method III: import data section relocation
+
+**NOT IMPLEMENTED YET**
+
+**Requirements:**
+1. Offset of new section entry must be less than section alignment;
+1. All RVAs must be incremented by virtual offset.
+
 ```text
-────────┬──────────────────┬──────
- .idata │                  │ start
-section │  address tables  │      
-        │     (thunk)      │      
-   ┌────►                  ┼─┐    
-   │    ├──────────────────┤ │    
-   │    +                  + │    
-   │    +   payload data   + │    
-   │┌───►                  + │    
-   ││   ├──────────────────┤ │    
-   ││   │                  │ │    
-   ││   │   lookup tables  │ │    
-   ││┌──►      (32/64)     │ │    
-   │││┌─┼                  │ │    
-   ││││ ├──────────────────┤ │    
-   │││└─►                  ◄─┘    
-   │││  │names and ordinals│      
-   │││  │                  ◄─┐    
-   │││  ├──────────────────┤ │    
-   ││└──┼                  ┼─┘    
-   │└───┼   import table   │      
-   └────┼                  │ end  
-────────┴──────────────────┴──────
+            before append                           after append
+         ┌──────────────────┐                   ┌──────────────────┐
+ PE file │      headers     │           PE file │      headers     │
+         │                  │                   │                  │
+─────────┼──────────────────┼──────    ─────────┼──────────────────┼──────
+sections │                  │ start    sections │                  │ start
+         │      .rsrc       │                   │      .rsrc       │
+         ├──────────────────┤                   ├──────────────────┤
+         │                  │                   │                  │
+         │      .data       │                   │      .data       │
+         ├──────────────────┤                   ├──────────────────┤
+         │                  │                   │                  │
+         │      .idata      │                   │     (empty)      │
+         ├──────────────────┤                   ├──────────────────┤
+         :                  :                   :                  :
+         :       ...        :                   :       ...        :
+         :                  :                   :                  :
+         ├──────────────────┤                   ├──────────────────┤
+         │                  │                   │                  │
+         │                  │                   │                  │
+         │      .text       │                   │      .text       │
+         │                  │                   │                  │
+         │                  │ end               │                  │
+ ────────┴──────────────────┴──────     - - - - ┼──────────────────┼ - - -
+                                                │                  │
+                                                │      .idata      │ end
+                                        ────────┴──────────────────┴──────
 ```
 
 
-## Usage
-
-If you already have the binaries:
-
-```sh
-wrappem [--help] <target> <payload> <dummyname> <output>
-```
-
-An example of how this would look like if I wanted to import `myPayload.dll` payload into the virtual memory of a process that imports `dinput8.dll`:
-
-```sh
-wrappem dinput8.dll myPayload.dll dummy out/dinput8.dll
-```
-
-Then, put `out/dinput8.dll` at that process' executable root folder. When Windows tries to import it, your payload should be loaded into the process virtual memory (your payload should also be at the root folder).
-
-*NOTE:* The _dummy_ is just an empty function, but it must be exported by your DLL.
-
-## Binaries
-
-You can find pre-compiled binaries on the [releases] page.
-
-
-[releases]: https://github.com/oAGoulart/wrappem/releases
 [article]: https://www.codeproject.com/articles/16541/create-your-proxy-dlls-automatically
