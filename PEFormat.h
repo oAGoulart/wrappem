@@ -313,22 +313,17 @@ public:
         memcpy(tmp + offset, &rva, 4);
         iaTable_->rvaImportLookupTable = importTable_->VirtualAddress + offset;
         offset += 4;
-        if (!is32_)
-        {
-          memset(tmp + offset, 0, 8);
-          offset += 8;
-        }
-        memset(tmp + offset, 0, 4);
-        offset += 4;
-        // NOTE: thunk data, same as above
+        uint32_t pad64 = is32_ ? 0 : 8;
+        uint32_t pad_common = 4;
+        memset(tmp + offset, 0, pad64);
+        offset += pad64;
+        memset(tmp + offset, 0, pad_common);
+        offset += pad_common;
         memcpy(tmp + offset, &rva, 4);
         iaTable_->rvaImportAddressTable = importTable_->VirtualAddress + offset;
         offset += 4;
-        if (!is32_)
-        {
-          memset(tmp + offset, 0, 8);
-          offset += 8;
-        }
+        memset(tmp + offset, 0, pad64);
+        offset += pad64;
         memset(tmp + offset, 0, 4 + sizeof(ImportDirectory));
         // offset += 4 + sizeof(ImportDirectory);
         // NOTE: patch addresses and sizes
