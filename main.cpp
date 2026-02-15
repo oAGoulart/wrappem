@@ -17,12 +17,12 @@ main(int argc, char* argv[])
     std::cout << std::endl << "    Parsing arguments..." << std::endl;
     if (argc > 1)
     {
-      if (!strcmp(argv[1], "--help"))
+      if ((!strcmp(argv[1], "--help") || !strcmp(argv[1], "-h")))
       {
-        std::cout << std::endl << "Usage: wrappem [--help] "
+        std::cout << std::endl << "Usage: wrappem [-h | --help] "
                   << __c(95, "<target> <payload> <dummyname> <output>")
                   << std::endl
-                  << "  --help\t  show this help message" << std::endl
+                  << "  -h, --help\t  show this help message" << std::endl
                   << "  " << __c(95, "target")
                   << "\t  filename of the targeted PE file" << std::endl
                   << "  " << __c(95, "payload")
