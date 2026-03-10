@@ -42,12 +42,13 @@ wrappem::PatchPE::FindEmptySpace_(const std::size_t min)
   return EmptySpace::SPACE_CREATE;
 }
 
-bool wrappem::PatchPE::HasSpaceForNewSection_()
+bool
+wrappem::PatchPE::HasSpaceForNewSection_()
 {
-  const uint32_t sectionAlign = (is32_) ?
-    optional_.u32->SectionAlignment : optional_.u64->SectionAlignment;
   const uint32_t offset = dos_->e_lfanew +
     sizeof(NtHeader) + nt_->FileHeader.SizeOfOptionalHeader +
-    nt_->FileHeader.NumberOfSections * sizeof(SectionParams);
-  return offset < sectionAlign;
+    (nt_->FileHeader.NumberOfSections * sizeof(SectionParams));
+  const uint32_t sizeOfHeaders = (is32_) ?
+    optional_.u32->SizeOfHeaders : optional_.u64->SizeOfHeaders;
+  return (offset + sizeof(SectionParams)) <= sizeOfHeaders;
 }

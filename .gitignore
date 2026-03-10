@@ -3,3 +3,4 @@ out/
 *.exe
 *.dll
 .vscode
+.clangd
