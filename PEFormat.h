@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+
 #include "shared.h"
 
 #pragma warning(disable: 4267)
@@ -30,12 +31,7 @@ MachineType(const uint16_t machine)
 inline constexpr uint32_t
 Align(const uint32_t value, const uint32_t alignment)
 {
-  uint32_t result = alignment;
-  while (result < value)
-  {
-    result += alignment;
-  }
-  return result;
+  return (value + alignment - 1) & ~(alignment - 1);
 }
 
 inline constexpr uint32_t
