@@ -2,5 +2,8 @@ build/
 out/
 *.exe
 *.dll
+*.obj
 .vscode
+.vs/
 .clangd
+CppProperties.json

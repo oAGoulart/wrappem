@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- Add move import data section method (Method III)
+
 ## [1.0.1] - 2025-07-22
 
 - Added correct handling of import table relocation

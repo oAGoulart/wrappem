@@ -1,4 +1,5 @@
 #include <memory>
+
 #include "PEFormat.h"
 #include "shared.h"
 
@@ -17,7 +18,8 @@ main(int argc, char* argv[])
     std::cout << std::endl << "    Parsing arguments..." << std::endl;
     if (argc > 1)
     {
-      if ((!strcmp(argv[1], "--help") || !strcmp(argv[1], "-h")))
+      if ((!strcmp(argv[1], "--help") ||
+           !strcmp(argv[1], "-h")))
       {
         std::cout << std::endl << "Usage: wrappem [-h | --help] "
                   << __c(95, "<target> <payload> <dummyname> <output>")
@@ -41,9 +43,13 @@ main(int argc, char* argv[])
     }
     else
     {
-      throw std::runtime_error("Arguments must be provided, use --help");
+      throw std::runtime_error(
+        "Arguments must be provided, use --help"
+      );
     }
-    auto f = std::make_unique<wrappem::PatchPE>(argv[1], argv[2], argv[3]);
+    auto f = std::make_unique<wrappem::PatchPE>(
+      argv[1], argv[2], argv[3]
+    );
     f->Save(argv[4]);
     std::cout << __c(32, "    DONE!") << std::endl;
   }

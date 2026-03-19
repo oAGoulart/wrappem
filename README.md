@@ -4,7 +4,8 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/oAGoulart/wrappem?color=green)
 [![License](https://img.shields.io/badge/License-MS--RL-blue)](./LICENSE)
 
-**WARNING:** This version can only work if there's enough empty space on `idata` section. Two more methods are being worked on to allow for cases where not enough space is available.
+> [!WARNING]
+> Currently, only [Method I](#method-i-import-table-relocation) and [Method III](#method-iii-import-data-section-relocation) are implemented.
 
 From old version:
 > This is a small tool that can generate a hooked PE file which will import your custom DLL into its process.
@@ -17,7 +18,7 @@ From old version:
 
 **Requirements:**
 1. Enough padding space for import table size plus one entry;
-1. Import table size bigger or equal to payload data size.
+2. Import table size bigger or equal to payload data size.
 
 ```text
  standard idata section structure               after relocation
@@ -52,7 +53,7 @@ section │  address tables  │          section │  address tables  │
 
 **Requirements:**
 1. Enough padding space for one table entry plus data;
-1. All relative virtual addresses (RVAs) in `idata` must be re-calculated.
+2. All relative virtual addresses (RVAs) in `idata` must be re-calculated.
 
 After import table expansion and re-building:
 ```text
@@ -83,11 +84,9 @@ section │     (thunk)      │
 
 ## Method III: import data section relocation
 
-**NOT IMPLEMENTED YET**
-
 **Requirements:**
 1. Offset of new section entry must be less than section alignment;
-1. All RVAs must be incremented by virtual offset.
+2. All RVAs must be incremented by virtual offset.
 
 ```text
             before append                           after append
@@ -118,6 +117,5 @@ sections │                  │ start    sections │                  │ sta
                                                 │      .idata      │ end
                                         ────────┴──────────────────┴──────
 ```
-
 
 [article]: https://www.codeproject.com/articles/16541/create-your-proxy-dlls-automatically
