@@ -202,27 +202,27 @@ private:
   };
 
   const char magic_[2] = { 'M', 'Z' };
-  const char sig_[4] = { 'P', 'E', '\0', '\0' };
+  const char sig_[4]   = { 'P', 'E', '\0', '\0' };
 
   bool is32_;
   EmptySpace hasSpace_;
 
   DosHeader* dos_;
-  NtHeader* nt_;
+  NtHeader*  nt_;
   union Optional
   {
     OptionalHeader32* u32;
     OptionalHeader64* u64;
   } optional_;
 
-  DataDirectory* importTable_;
+  DataDirectory*   importTable_;
   ImportDirectory* iaTable_;
-  SectionParams* idataSection_;
-  SectionParams* lastSection_;
+  SectionParams*   idataSection_;
+  SectionParams*   lastSection_;
 
-  uint8_t* fileBytes_ = nullptr;
+  uint8_t*  fileBytes_ = nullptr;
   uintmax_t fileSize_ = 0;
-  uint8_t* secBytes_ = nullptr;
+  uint8_t*  secBytes_ = nullptr;
   uintmax_t secSize_ = 0;
 
   EmptySpace
@@ -233,7 +233,6 @@ private:
       nt_->FileHeader.SizeOfOptionalHeader);
 
     lastSection_ = &idataSection_[nt_->FileHeader.NumberOfSections - 1];
-
     for (uint16_t i = 0; i < nt_->FileHeader.NumberOfSections; i++)
     {
       if (idataSection_->VirtualAddress <= importTable_->VirtualAddress &&
@@ -252,7 +251,6 @@ private:
         iaTable_ = reinterpret_cast<ImportDirectory*>(fileBytes_ + ia);
         uint32_t diff =
           idataSection_->SizeOfRawData - idataSection_->Misc.VirtualSize;
-
         if (diff >= importTable_->Size + sizeof(ImportDirectory) &&
             importTable_->Size >= min)
         {
@@ -552,7 +550,6 @@ private:
       fileBytes_ + idataSection_->PointerToRawData,
       idataSection_->SizeOfRawData
     );
-
     ShiftRVAs_(virtualOffset);
 
     std::cout << "    Injecting payload..." << std::endl;
@@ -623,12 +620,10 @@ private:
     newSection->Misc.VirtualSize = newDirOffset + newDirTableSize;
     newSection->SizeOfRawData = secSize_;
     nt_->FileHeader.NumberOfSections++;
-
     uint32_t alignedImageSize = Align(
       newSection->VirtualAddress + newSection->Misc.VirtualSize,
       sectionAlign
     );
-
     if (is32_)
     {
       optional_.u32->SizeOfImage = alignedImageSize;
@@ -665,7 +660,6 @@ private:
         ((nt_->FileHeader.NumberOfSections - 1) * sizeof(SectionParams)));
 
       uint32_t expectedOffset = appendedSection->PointerToRawData;
-
       if (finalFile.size() < expectedOffset)
       {
         finalFile.resize(expectedOffset, 0);
@@ -694,15 +688,12 @@ private:
     {
       checkSumOffset += offsetof(OptionalHeader64, CheckSum);
     }
-
     uint32_t newCheckSum = CalculatePECheckSum_(
       finalFile.data(), finalFile.size(),
       checkSumOffset
     );
-
     *reinterpret_cast<uint32_t*>(finalFile.data() + checkSumOffset) =
       newCheckSum;
-
     return newCheckSum;
   }
 
@@ -733,7 +724,6 @@ public:
       uint32_t minSize = sizeof(ImportDirectory) + ltSize;
       minSize += Pad(dummyname.length() + 3, 2);
       minSize += Pad(payload.length() + 1, 2);
-
       EmptySpace method = FindEmptySpace_(minSize);
 
       const uint32_t newSectionOffset = dos_->e_lfanew +
@@ -789,16 +779,13 @@ public:
   Save(const std::filesystem::path& filename)
   {
     std::cout << "    Saving to output file..." << std::endl;
-
     EnsureDirectoryExists_(filename);
 
     std::vector<uint8_t> finalFile = AssembleFinalImage_();
-
     uint32_t newCheckSum = UpdateCheckSum_(finalFile);
 
     WriteToFile_(filename, finalFile);
-
-    std::cout << "    Done! CheckSum updated to: 0x" << std::hex
+    std::cout << "    CheckSum updated to: 0x" << std::hex
               << newCheckSum << std::dec << std::endl;
   }
 };

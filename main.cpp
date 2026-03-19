@@ -10,11 +10,10 @@ main(int argc, char* argv[])
   {
     std::cout << std::endl << "\t\t" << __c(36, PROJECT_NAME) << ' '
               << __c(36, PROJECT_VERSION) << std::endl
-              << "\tCopyright (C) 2025. Augusto Goulart." << std::endl
+              << "\tCopyright (C) 2025-2026. Augusto Goulart." << std::endl
               << "\tLicensed under Microsoft Reciprocal License (Ms-RL)."
               << std::endl;
 
-  
     std::cout << std::endl << "    Parsing arguments..." << std::endl;
     if (argc > 1)
     {

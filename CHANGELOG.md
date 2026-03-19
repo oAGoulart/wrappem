@@ -4,7 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- Add move import data section method (Method III)
+
+## [1.1.0] - 2026-03-19
+
+- Added move import data section method (Method III)
 
 ## [1.0.1] - 2025-07-22
 
