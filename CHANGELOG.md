@@ -63,7 +63,8 @@ All notable changes to this project will be documented in this file.
 - Added initial files
 
 
-[unreleased]: https://github.com/oAGoulart/wrappem/compare/v1.0.1..HEAD
+[unreleased]: https://github.com/oAGoulart/wrappem/compare/v1.1.0..HEAD
+[1.1.0]: https://github.com/oAGoulart/wrappem/releases/tag/v1.1.0
 [1.0.1]: https://github.com/oAGoulart/wrappem/releases/tag/v1.0.1
 [1.0.0]: https://github.com/oAGoulart/wrappem/releases/tag/v1.0.0
 [0.2.2]: https://github.com/oAGoulart/wrappem/releases/tag/v0.2.2
