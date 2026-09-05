@@ -432,32 +432,15 @@ private:
       {
         uint32_t intRawOffset =
           importDir->rvaImportLookupTable - idataSection_->VirtualAddress;
-
-        if (is32_)
+        uint32_t* thunk = reinterpret_cast<uint32_t*>(
+          secBytes_ + intRawOffset);
+        while (*thunk != 0)
         {
-          uint32_t* thunk = reinterpret_cast<uint32_t*>(
-            secBytes_ + intRawOffset);
-          while (*thunk != 0)
+          if (!(*thunk & 0x80000000))
           {
-            if (!(*thunk & 0x80000000))
-            {
-              *thunk += virtualOffset;
-            }
-            thunk++;
+            *thunk += virtualOffset;
           }
-        }
-        else
-        {
-          uint64_t* thunk = reinterpret_cast<uint64_t*>(
-            secBytes_ + intRawOffset);
-          while (*thunk != 0)
-          {
-            if (!(*thunk & 0x8000000000000000ULL))
-            {
-              *thunk += virtualOffset;
-            }
-            thunk++;
-          }
+          thunk++;
         }
         importDir->rvaImportLookupTable += virtualOffset;
       }
@@ -466,32 +449,15 @@ private:
       {
         uint32_t iatRawOffset = importDir->rvaImportAddressTable -
           idataSection_->VirtualAddress;
-
-        if (is32_)
+        uint32_t* thunk = reinterpret_cast<uint32_t*>(
+          secBytes_ + iatRawOffset);
+        while (*thunk != 0)
         {
-          uint32_t* thunk = reinterpret_cast<uint32_t*>(
-            secBytes_ + iatRawOffset);
-          while (*thunk != 0)
+          if (!(*thunk & 0x80000000))
           {
-            if (!(*thunk & 0x80000000))
-            {
-              *thunk += virtualOffset;
-            }
-            thunk++;
+            *thunk += virtualOffset;
           }
-        }
-        else
-        {
-          uint64_t* thunk = reinterpret_cast<uint64_t*>(
-            secBytes_ + iatRawOffset);
-          while (*thunk != 0)
-          {
-            if (!(*thunk & 0x8000000000000000ULL))
-            {
-              *thunk += virtualOffset;
-            }
-            thunk++;
-          }
+          thunk++;
         }
         importDir->rvaImportAddressTable += virtualOffset;
       }

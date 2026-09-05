@@ -31,14 +31,17 @@ clang++ -g main.cpp -Og -o WrappEm.exe -std=c++17
 cl main.cpp /std:c++17 /EHsc /out:WrappEm.exe /Debug /Og
 ```
 
-## Explored methods
+## Artifacts
 
-- Method I: Intra-section `Import Directory` relocation
-- Method II: In-place `Import Section` reconstruction
-- Method III: End-of-file `Import section` relocation
+Resulting artifacts from using this tool (at `/artifacts`):
 
-> [!WARNING]
-> Currently, only [Method I](#method-i) and [Method III](#method-iii) are implemented.
+> [!CAUTION]
+> Use it at your own risk!
+
+- Payload -- sample source and binaries for the code to execute at runtime.
+- DLLs -- subverting Windows Image Loader to load `payload.dll` by the byte-manipulated DLL `version.dll` (modified by this tool) which is loaded by `benignTarget.exe`.
+- Executable -- directly modifying an executable (`main.exe`, manipulated by this tool) to load `payload.dll`.
+- Proxy -- manually building an export-forwarding DLL (for comparison with byte manipulation).
 
 ## Target manipulation steps
 
