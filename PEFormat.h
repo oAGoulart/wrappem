@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <string>
 #include <vector>
 
 #include "shared.h"
@@ -225,6 +226,9 @@ private:
   uint8_t*  secBytes_ = nullptr;
   uintmax_t secSize_ = 0;
 
+  std::string dummyname_;
+  std::string payload_;
+
   EmptySpace
   FindEmptySpace_(const std::size_t min)
   {
@@ -264,11 +268,7 @@ private:
       }
       idataSection_++;
     }
-
-    if (idataSection_ == nullptr)
-    {
-      throw std::runtime_error("could not find import data section.");
-    }
+    // NOTE: no import section found
     return EmptySpace::SPACE_CREATE;
   }
 
@@ -352,20 +352,12 @@ private:
   {
     importTable_ = (is32_) ?
       &optional_.u32->DataDirectory[1] : &optional_.u64->DataDirectory[1];
-
-    if (importTable_->VirtualAddress == 0 || importTable_->Size == 0)
-    {
-      throw std::runtime_error(
-        "file has no import table directory.");
-    }
     std::cout << __c(42, "[+]") << " Import table size (bytes): "
               << importTable_->Size << std::endl;
   }
 
   void
-  InjectByRelocating_(const std::string& dummyname,
-                      const std::string& payload,
-                      uint32_t minSize)
+  InjectByRelocating_(uint32_t minSize)
   {
     ImportDirectory* dest = reinterpret_cast<ImportDirectory*>(
       fileBytes_ + idataSection_->PointerToRawData +
@@ -379,18 +371,18 @@ private:
     memset(tmp, 0, 2);
 
     uint32_t offset = 2;
-    memcpy(tmp + offset, dummyname.c_str(), dummyname.length());
-    offset += dummyname.length();
+    memcpy(tmp + offset, dummyname_.c_str(), dummyname_.length());
+    offset += dummyname_.length();
 
-    uint32_t padding = Pad(dummyname.length() + 1, 2);
+    uint32_t padding = Pad(dummyname_.length() + 1, 2);
     memset(tmp + offset, 0, padding);
     offset += padding;
 
-    memcpy(tmp + offset, payload.c_str(), payload.length());
+    memcpy(tmp + offset, payload_.c_str(), payload_.length());
     iaTable_->rvaModuleName = importTable_->VirtualAddress + offset;
-    offset += payload.length();
+    offset += payload_.length();
 
-    padding = Pad(payload.length() + 1, 2);
+    padding = Pad(payload_.length() + 1, 2);
     memset(tmp + offset, 0, padding);
     offset += padding;
 
@@ -467,9 +459,119 @@ private:
   }
 
   void
-  InjectByNewSection_(const std::string& dummyname,
-                      const std::string& payload,
-                      uint32_t newSectionOffset)
+  InjectByNewDirectory_(uint32_t newSectionOffset)
+  {
+    uint32_t sectionAlign = (is32_) ?
+      optional_.u32->SectionAlignment : optional_.u64->SectionAlignment;
+    uint32_t fileAlign = (is32_) ?
+      optional_.u32->FileAlignment : optional_.u64->FileAlignment;
+
+    SectionParams* newSection = reinterpret_cast<SectionParams*>(
+      fileBytes_ + newSectionOffset);
+    SectionParams* lastSection = reinterpret_cast<SectionParams*>(
+      fileBytes_ + newSectionOffset - sizeof(SectionParams));
+
+    memcpy(newSection->Name, ".idata\0\0", 8);
+    newSection->Characteristics = 0xC0000040;
+
+    uint32_t va = lastSection->VirtualAddress +
+      lastSection->Misc.VirtualSize;
+    newSection->VirtualAddress = Align(va, sectionAlign);
+
+    uint32_t raw = lastSection->PointerToRawData +
+      lastSection->SizeOfRawData;
+    newSection->PointerToRawData = Align(raw, fileAlign);
+
+    uint32_t dirTableSize = 2 * sizeof(ImportDirectory);
+
+    uint32_t nameLen = dummyname_.length();
+    uint32_t namePad = Pad(nameLen + 1, 2);
+    uint32_t dllLen = payload_.length();
+    uint32_t dllPad = Pad(dllLen + 1, 2);
+    uint32_t thunkSpace = is32_ ? 8 : 16;
+    uint32_t payload_DataSize = 2 + nameLen + namePad +
+      dllLen + dllPad + (thunkSpace * 2);
+
+    uint32_t virtualSize = payload_DataSize + dirTableSize;
+    secSize_ = Align(virtualSize, fileAlign);
+    secBytes_ = new uint8_t[secSize_]();
+
+    std::cout << "    Injecting payload_..." << std::endl;
+    uint32_t spotRVA = newSection->VirtualAddress;
+    uint8_t* tmp = reinterpret_cast<uint8_t*>(secBytes_);
+    memset(tmp, 0, 2);
+
+    uint32_t offset = 2;
+    memcpy(tmp + offset, dummyname_.c_str(), dummyname_.length());
+    offset += dummyname_.length();
+
+    uint32_t padding = Pad(dummyname_.length() + 1, 2);
+    memset(tmp + offset, 0, padding);
+    offset += padding;
+
+    uint32_t rvaModuleName = spotRVA + offset;
+    memcpy(tmp + offset, payload_.c_str(), payload_.length());
+    offset += payload_.length();
+
+    padding = Pad(payload_.length() + 1, 2);
+    memset(tmp + offset, 0, padding);
+    offset += padding;
+
+    uint32_t rvaHintName = spotRVA;
+    memcpy(tmp + offset, &rvaHintName, 4);
+    uint32_t rvaImportLookupTable = spotRVA + offset;
+    offset += 4;
+
+    uint32_t pad64 = is32_ ? 0 : 8;
+    uint32_t pad_common = 4;
+    memset(tmp + offset, 0, pad64);
+    offset += pad64;
+    memset(tmp + offset, 0, pad_common);
+    offset += pad_common;
+
+    memcpy(tmp + offset, &rvaHintName, 4);
+    uint32_t rvaImportAddressTable = spotRVA + offset;
+    offset += 4;
+    memset(tmp + offset, 0, pad64);
+    offset += pad64;
+    memset(tmp + offset, 0, 4);
+    offset += 4;
+
+    ImportDirectory* newEntry = reinterpret_cast<ImportDirectory*>(
+        tmp + offset);
+
+    newEntry->rvaImportLookupTable = rvaImportLookupTable;
+    newEntry->TimeDateStamp = 0;
+    newEntry->ForwarderChain = 0;
+    newEntry->rvaModuleName = rvaModuleName;
+    newEntry->rvaImportAddressTable = rvaImportAddressTable;
+    memset(newEntry + 1, 0, sizeof(ImportDirectory));
+
+    std::cout << "    Patch sizes and addresses..." << std::endl;
+    importTable_->VirtualAddress =
+      newSection->VirtualAddress + offset;
+    importTable_->Size = dirTableSize;
+
+    newSection->Misc.VirtualSize = offset + dirTableSize;
+    newSection->SizeOfRawData = secSize_;
+    nt_->FileHeader.NumberOfSections++;
+    uint32_t alignedImageSize = Align(
+      newSection->VirtualAddress + newSection->Misc.VirtualSize,
+      sectionAlign
+    );
+    if (is32_)
+    {
+      optional_.u32->SizeOfImage = alignedImageSize;
+    }
+    else
+    {
+      optional_.u64->SizeOfImage = alignedImageSize;
+    }
+  }
+
+
+  void
+  InjectByNewSection_(uint32_t newSectionOffset)
   {
     uint32_t sectionAlign = (is32_) ?
       optional_.u32->SectionAlignment : optional_.u64->SectionAlignment;
@@ -499,16 +601,16 @@ private:
     uint32_t newDirTableSize =
       oldDirTableSize + sizeof(ImportDirectory);
 
-    uint32_t nameLen = dummyname.length();
+    uint32_t nameLen = dummyname_.length();
     uint32_t namePad = Pad(nameLen + 1, 2);
-    uint32_t dllLen = payload.length();
+    uint32_t dllLen = payload_.length();
     uint32_t dllPad = Pad(dllLen + 1, 2);
     uint32_t thunkSpace = is32_ ? 8 : 16;
-    uint32_t payloadDataSize = 2 + nameLen + namePad +
+    uint32_t payload_DataSize = 2 + nameLen + namePad +
       dllLen + dllPad + (thunkSpace * 2);
 
     uint32_t newVirtualSize = idataSection_->Misc.VirtualSize +
-      payloadDataSize + newDirTableSize;
+      payload_DataSize + newDirTableSize;
     secSize_ = Align(newVirtualSize, fileAlign);
     secBytes_ = new uint8_t[secSize_]();
 
@@ -518,7 +620,7 @@ private:
     );
     ShiftRVAs_(virtualOffset);
 
-    std::cout << "    Injecting payload..." << std::endl;
+    std::cout << "    Injecting payload_..." << std::endl;
     uint32_t oldDirOffset =
       importTable_->VirtualAddress - idataSection_->VirtualAddress;
     ImportDirectory* oldDirInBuf =
@@ -533,18 +635,18 @@ private:
     memset(tmp, 0, 2);
 
     uint32_t offset = 2;
-    memcpy(tmp + offset, dummyname.c_str(), dummyname.length());
-    offset += dummyname.length();
+    memcpy(tmp + offset, dummyname_.c_str(), dummyname_.length());
+    offset += dummyname_.length();
 
-    uint32_t padding = Pad(dummyname.length() + 1, 2);
+    uint32_t padding = Pad(dummyname_.length() + 1, 2);
     memset(tmp + offset, 0, padding);
     offset += padding;
 
     uint32_t rvaModuleName = spotRVA + offset;
-    memcpy(tmp + offset, payload.c_str(), payload.length());
-    offset += payload.length();
+    memcpy(tmp + offset, payload_.c_str(), payload_.length());
+    offset += payload_.length();
 
-    padding = Pad(payload.length() + 1, 2);
+    padding = Pad(payload_.length() + 1, 2);
     memset(tmp + offset, 0, padding);
     offset += padding;
 
@@ -678,7 +780,8 @@ private:
 public:
   PatchPE(const std::filesystem::path& filename,
           const std::string& payload,
-          const std::string& dummyname)
+          const std::string& dummyname) :
+    payload_(payload), dummyname_(dummyname)
   {
     try
     {
@@ -688,8 +791,8 @@ public:
 
       const uint32_t ltSize = 4 * ((is32_) ? 4 : 8);
       uint32_t minSize = sizeof(ImportDirectory) + ltSize;
-      minSize += Pad(dummyname.length() + 3, 2);
-      minSize += Pad(payload.length() + 1, 2);
+      minSize += Pad(dummyname_.length() + 3, 2);
+      minSize += Pad(payload_.length() + 1, 2);
       EmptySpace method = FindEmptySpace_(minSize);
 
       const uint32_t newSectionOffset = dos_->e_lfanew +
@@ -700,25 +803,26 @@ public:
         optional_.u32->SizeOfHeaders : optional_.u64->SizeOfHeaders;
 
       std::cout << "    Method chosen: ";
-      if (method == EmptySpace::SPACE_RELOCATE)
+      if (method == EmptySpace::SPACE_CREATE)
       {
-        std::cout << "relocate import table..." << std::endl;
-        InjectByRelocating_(dummyname, payload, minSize);
+        std::cout << "create supplemental Import Directory." << std::endl;
+        InjectByNewDirectory_(newSectionOffset);
+      }
+      else if (method == EmptySpace::SPACE_RELOCATE)
+      {
+        std::cout << "relocate Import Directory within Import Section."
+                  << std::endl;
+        InjectByRelocating_(minSize);
       }
       else if ((newSectionOffset + sizeof(SectionParams)) <= sizeOfHeaders)
       {
-        std::cout << "move import data section..." << std::endl;
-        InjectByNewSection_(dummyname, payload, newSectionOffset);
-      }
-      else if (method == EmptySpace::SPACE_EXPAND)
-      {
-        std::cout << "expand import table..." << std::endl;
-        throw std::runtime_error("unavailable EXPAND method");
+        std::cout << "relocate Import Section to end-of-file." << std::endl;
+        InjectByNewSection_(newSectionOffset);
       }
       else
       {
         throw std::runtime_error(
-          "no method is suitable for import injection");
+          "no method is suitable for byte manipulation");
       }
     }
     catch (const std::exception& e)

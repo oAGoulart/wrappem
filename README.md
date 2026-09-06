@@ -22,7 +22,7 @@ clang++ -g main.cpp -o WrappEm.exe -std=c++17
 
 **MSVC build:**
 ```sh
-cl main.cpp /std:c++17 /EHsc /out:WrappEm.exe /Debug
+cl main.cpp /std:c++17 /EHsc /Fe:WrappEm.exe
 ```
 
 ## Artifacts

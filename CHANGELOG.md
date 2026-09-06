@@ -4,7 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- Add artifacts
+- Added artifacts
+- Added supplemental Import Directory creation
+- Fixed Segmentation Fault on pe64 targets
 
 ## [1.1.0] - 2026-03-19
 
