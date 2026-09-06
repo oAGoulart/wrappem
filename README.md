@@ -4,17 +4,11 @@
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/oAGoulart/wrappem?color=green)
 [![License](https://img.shields.io/badge/License-MS--RL-blue)](./LICENSE)
 
-This tool explores three distinctive methods of Windows Image
-Loader subversion for adversarial payload execution. These methods leverage
-byte-based manipulation techniques to modify a binary file’s Import Directory
-and, when necessary, its Import Section. This forces Windows to load an additional
-executable binary into the host process virtual address space. These methods --
-which rely on importing an external payload -- can be used as alternatives for
-traditional export forwarding techniques that rely on structurally empty binaries.
+This work explores distinct methods of subverting the Windows image loader to execute adversarial payloads. Such methods use byte-level manipulation techniques to modify the `Import Directory` and, when necessary, the `Import Section` of a binary file. This forces Windows to load an additional executable binary into the host's (target) process virtual address space. These methods -- implemented as a command-line tool -- can serve as alternatives to traditional export forwarding techniques (i.e. Proxy DLLs), which rely on structurally empty binaries.
 
 ## Building
 
-No dependencies, all `PE Format` structs are defined within `PEFormat.h`.
+No dependencies required, all data structures of the PE format are defined within `PEFormat.h`.
 
 **MinGW build:**
 ```sh
